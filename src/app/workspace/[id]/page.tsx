@@ -75,16 +75,20 @@ export default function WorkspacePage({ params }: { params: Promise<{ id: string
       <div className="flex items-center justify-between px-4 py-2 border-b border-[#27272a] bg-[#09090b] shrink-0">
         <div className="flex items-center gap-3">
           <button
+            onClick={() => router.push("/")}
+            className="w-6 h-6 rounded bg-gradient-to-br from-[#8b5cf6] to-[#3b82f6] flex items-center justify-center text-[10px] font-bold hover:scale-110 transition-transform"
+            title="Home"
+          >
+            A
+          </button>
+          <button
             onClick={() => router.push("/dashboard")}
             className="text-[#71717a] hover:text-white text-sm transition-colors"
           >
-            ← Back
+            ← Projects
           </button>
           <div className="w-px h-4 bg-[#27272a]" />
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-gradient-to-br from-[#8b5cf6] to-[#3b82f6] flex items-center justify-center text-[10px] font-bold">A</div>
-            <span className="text-sm font-medium truncate max-w-[200px]">{project.name}</span>
-          </div>
+          <span className="text-sm font-medium truncate max-w-[200px]">{project.name}</span>
           {isGenerating && (
             <span className="flex items-center gap-1.5 text-xs text-[#f97316]">
               <span className="w-1.5 h-1.5 rounded-full bg-[#f97316] animate-pulse" />
@@ -110,6 +114,7 @@ export default function WorkspacePage({ params }: { params: Promise<{ id: string
             projectId={id}
             userId={userId || ""}
             initialMessages={messages}
+            autoPrompt={messages.length === 0 && project.description ? project.description : undefined}
             onCodeUpdate={handleCodeUpdate}
             onGeneratingChange={setIsGenerating}
           />

@@ -15,6 +15,7 @@ interface Props {
   projectId: string;
   userId: string;
   initialMessages: Message[];
+  autoPrompt?: string;
   onCodeUpdate: (code: string) => void;
   onGeneratingChange: (generating: boolean) => void;
 }
@@ -23,6 +24,7 @@ export default function ChatPanel({
   projectId,
   userId,
   initialMessages,
+  autoPrompt,
   onCodeUpdate,
   onGeneratingChange,
 }: Props) {
@@ -31,6 +33,7 @@ export default function ChatPanel({
   );
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [autoTriggered, setAutoTriggered] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -38,9 +41,16 @@ export default function ChatPanel({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSubmit = async () => {
-    const prompt = input.trim();
-    if (!prompt || isGenerating) return;
+  // Auto-trigger generation from template prompt
+  useEffect(() => {
+    if (autoPrompt && !autoTriggered && !isGenerating && messages.length === 0) {
+      setAutoTriggered(true);
+      sendPrompt(autoPrompt);
+    }
+  }, [autoPrompt, autoTriggered]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const sendPrompt = async (prompt: string) => {
+    if (!prompt.trim() || isGenerating) return;
 
     setInput("");
     setIsGenerating(true);
@@ -136,6 +146,10 @@ export default function ChatPanel({
       setIsGenerating(false);
       onGeneratingChange(false);
     }
+  };
+
+  const handleSubmit = () => {
+    sendPrompt(input.trim());
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
