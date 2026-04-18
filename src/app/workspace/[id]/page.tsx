@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import ChatPanel from "@/components/ChatPanel";
 import PreviewPanel from "@/components/PreviewPanel";
@@ -18,12 +18,7 @@ export default function WorkspacePage({ params }: { params: Promise<{ id: string
   const [isDragging, setIsDragging] = useState(false);
   const userId = typeof window !== "undefined" ? localStorage.getItem("user_id") : null;
 
-  useEffect(() => {
-    if (!userId) { router.push("/login"); return; }
-    loadProject();
-  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const loadProject = async () => {
+  const loadProject = useCallback(async () => {
     try {
       const res = await fetch(`/api/projects/${id}`);
       if (!res.ok) { router.push("/dashboard"); return; }
@@ -35,7 +30,12 @@ export default function WorkspacePage({ params }: { params: Promise<{ id: string
       router.push("/dashboard");
     }
     setLoading(false);
-  };
+  }, [id, router]);
+
+  useEffect(() => {
+    if (!userId) { router.push("/login"); return; }
+    loadProject(); // eslint-disable-line react-hooks/set-state-in-effect -- async data fetch
+  }, [userId, router, loadProject]);
 
   const handleCodeUpdate = (newCode: string) => {
     setCode(newCode);

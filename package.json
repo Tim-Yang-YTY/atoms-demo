@@ -8,8 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-vm-modules node_modules/.bin/jest --passWithNoTests",
-    "test:watch": "node --experimental-vm-modules node_modules/.bin/jest --watch",
+    "test": "jest --passWithNoTests",
+    "test:watch": "jest --watch",
     "validate": "./scripts/validate.sh",
     "validate:ci": "./scripts/validate.sh --check"
   },

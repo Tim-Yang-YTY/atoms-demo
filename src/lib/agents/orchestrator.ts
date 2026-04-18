@@ -4,7 +4,7 @@
 // Pipeline: PM (plan) -> Engineer (code) -> Designer (refine)
 // ============================================================
 
-import type { AgentRole, AgentContext, SSEEvent } from "@/lib/types";
+import type { AgentContext, SSEEvent } from "@/lib/types";
 import { callLLMStream, AGENT_PROMPTS } from "./llm";
 import { toolRegistry } from "@/lib/tools/registry";
 
@@ -43,7 +43,6 @@ export async function* orchestrate(
 
   let engineerResponse = "";
   let codeBuffer = "";
-  let inCodeBlock = false;
 
   const engineerMessages = [
     { role: "user" as const, content: `Product plan:\n${pmResponse}\n\nOriginal request: ${userPrompt}\n\n${context.currentCode ? `Current code to improve:\n${context.currentCode}\n\n` : ""}Generate a COMPLETE, self-contained single HTML file. Include ALL HTML, CSS, and JavaScript inline. The app must be fully functional. Use modern dark UI (bg #0f0f0f, text #e4e4e7). Use localStorage for persistence. Output ONLY the HTML code wrapped in \`\`\`html ... \`\`\` tags.` },
@@ -60,14 +59,12 @@ export async function* orchestrate(
       const newCode = codeMatch[1].trim();
       if (newCode !== codeBuffer) {
         codeBuffer = newCode;
-        inCodeBlock = true;
       }
     } else if (fullText.includes("```html") && !fullText.includes("```html\n```")) {
       // Still streaming code block
       const partial = fullText.split("```html")[1] || "";
       if (partial.trim() !== codeBuffer) {
         codeBuffer = partial.trim();
-        inCodeBlock = true;
       }
     }
   }
@@ -88,13 +85,11 @@ export async function* orchestrate(
     validation = await validateTool.execute({ code: codeBuffer });
   }
 
-  let designerResponse = "";
   const designerMessages = [
     { role: "user" as const, content: `Review this generated app and suggest UI/UX improvements:\n\nValidation: ${validation}\n\nCode length: ${codeBuffer.length} chars\n\nOriginal request: ${userPrompt}\n\nProvide a brief review: 1) What looks good 2) Potential improvements 3) Accessibility notes. Keep it concise.` },
   ];
 
   for await (const chunk of callLLMStream(AGENT_PROMPTS.designer, designerMessages)) {
-    designerResponse += chunk;
     yield { type: "agent_message", agent: "designer", content: chunk };
   }
   yield { type: "agent_complete", agent: "designer" };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import type { Project, Template } from "@/lib/types";
 
@@ -15,30 +15,16 @@ export default function DashboardPage() {
   const userId = typeof window !== "undefined" ? localStorage.getItem("user_id") : null;
   const userName = typeof window !== "undefined" ? localStorage.getItem("user_name") : null;
 
-  useEffect(() => {
-    if (!userId) { router.push("/login"); return; }
-    loadProjects();
-    // Check for pending template
-    const pt = localStorage.getItem("pending_template");
-    if (pt) {
-      localStorage.removeItem("pending_template");
-      try {
-        const t: Template = JSON.parse(pt);
-        createProject(t.name, t.prompt, t.id);
-      } catch { /* ignore */ }
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async () => {
     try {
       const res = await fetch(`/api/projects?user_id=${userId}`);
       const data = await res.json();
       setProjects(data.projects || []);
     } catch { /* ignore */ }
     setLoading(false);
-  };
+  }, [userId]);
 
-  const createProject = async (name: string, description: string, template?: string) => {
+  const createProject = useCallback(async (name: string, description: string, template?: string) => {
     setCreating(true);
     try {
       const res = await fetch("/api/projects", {
@@ -50,7 +36,21 @@ export default function DashboardPage() {
       if (data.project) router.push(`/workspace/${data.project.id}`);
     } catch { /* ignore */ }
     setCreating(false);
-  };
+  }, [userId, router]);
+
+  useEffect(() => {
+    if (!userId) { router.push("/login"); return; }
+    loadProjects(); // eslint-disable-line react-hooks/set-state-in-effect -- async data fetch
+    // Check for pending template
+    const pt = localStorage.getItem("pending_template");
+    if (pt) {
+      localStorage.removeItem("pending_template");
+      try {
+        const t: Template = JSON.parse(pt);
+        createProject(t.name, t.prompt, t.id);
+      } catch { /* ignore */ }
+    }
+  }, [userId, router, loadProjects, createProject]);
 
   const deleteProject = async (id: string) => {
     if (!confirm("Delete this project?")) return;

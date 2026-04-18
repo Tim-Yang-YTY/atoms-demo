@@ -11,7 +11,7 @@ export class AuthService {
     const user = await userRepository.findByEmail(email);
     if (!user) throw new Error("Invalid email or password");
     if (user.password !== password) throw new Error("Invalid email or password");
-    const { password: _, ...safeUser } = user;
+    const { password: _password, ...safeUser } = user;
     return safeUser as User;
   }
 

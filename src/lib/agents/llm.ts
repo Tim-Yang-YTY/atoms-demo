@@ -185,7 +185,7 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-function getMockPMResponse(userMsg: string): string {
+function getMockPMResponse(_userMsg: string): string {
   return `## Product Analysis
 
 ### Key Features
@@ -208,7 +208,7 @@ function getMockPMResponse(userMsg: string): string {
 Estimated components: Auth module, CRUD form, list view, chart, nav.`;
 }
 
-function getMockEngineerResponse(userMsg: string): string {
+function getMockEngineerResponse(_userMsg: string): string {
   return "Building your application now...\n\n```html\n" + MOCK_APP_CODE + "\n```\n\nThe app is fully functional with localStorage persistence, responsive design, and all requested features.";
 }
 
