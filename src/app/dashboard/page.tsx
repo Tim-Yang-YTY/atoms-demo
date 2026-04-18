@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import type { Project, Template } from "@/lib/types";
+import { TEMPLATES } from "@/lib/types";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -85,10 +86,10 @@ export default function DashboardPage() {
     <div className="min-h-screen">
       {/* Nav */}
       <nav className="flex items-center justify-between px-6 py-4 border-b border-[#27272a]">
-        <div className="flex items-center gap-2">
+        <button onClick={() => router.push("/")} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#8b5cf6] to-[#3b82f6] flex items-center justify-center font-bold text-sm">A</div>
           <span className="font-semibold text-lg">Atoms Demo</span>
-        </div>
+        </button>
         <div className="flex items-center gap-3">
           <span className="text-sm text-[#a1a1aa]">{userName || "User"}</span>
           <button onClick={logout} className="px-3 py-1.5 text-xs text-[#71717a] hover:text-white border border-[#27272a] rounded-md transition-colors">Logout</button>
@@ -125,10 +126,10 @@ export default function DashboardPage() {
         {loading ? (
           <div className="text-center text-[#52525b] py-20">Loading projects...</div>
         ) : projects.length === 0 ? (
-          <div className="text-center py-20 border border-dashed border-[#27272a] rounded-xl">
+          <div className="text-center py-12 border border-dashed border-[#27272a] rounded-xl">
             <div className="text-4xl mb-3">🚀</div>
-            <p className="text-[#71717a] mb-4">No projects yet. Create your first one!</p>
-            <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-[#8b5cf6] hover:bg-[#7c3aed] text-white rounded-lg text-sm font-medium transition-colors">+ New Project</button>
+            <p className="text-[#71717a] mb-4">No projects yet. Pick a template or create from scratch!</p>
+            <button onClick={() => setShowNew(true)} className="px-4 py-2 bg-[#8b5cf6] hover:bg-[#7c3aed] text-white rounded-lg text-sm font-medium transition-colors">+ New Blank Project</button>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -150,6 +151,26 @@ export default function DashboardPage() {
             ))}
           </div>
         )}
+
+        {/* Templates section */}
+        <div className="mt-12 mb-8">
+          <h2 className="text-xl font-bold mb-1">Start from a template</h2>
+          <p className="text-sm text-[#71717a] mb-6">Choose a template to instantly generate a fully functional app</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {TEMPLATES.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => createProject(t.name, t.prompt, t.id)}
+                disabled={creating}
+                className="text-left p-5 rounded-xl border border-[#27272a] bg-[#18181b] hover:border-[#8b5cf6]/50 transition-all group disabled:opacity-50"
+              >
+                <span className="text-xs px-2 py-0.5 rounded-full bg-[#27272a] text-[#a1a1aa]">{t.category}</span>
+                <h3 className="font-semibold mt-3 mb-1 group-hover:text-[#8b5cf6] transition-colors">{t.name}</h3>
+                <p className="text-sm text-[#71717a] leading-relaxed">{t.description}</p>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
