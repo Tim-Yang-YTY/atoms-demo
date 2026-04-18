@@ -30,14 +30,14 @@ class MemoryStore {
   findUserById(id: string): User | null {
     const u = this.users.get(id);
     if (!u) return null;
-    const { password: _, ...safe } = u;
+    const { password: _pw, ...safe } = u;
     return safe;
   }
 
   createUser(email: string, password: string, name: string | null): User {
     const user = { id: uuid(), email, password, name, created_at: now() };
     this.users.set(user.id, user);
-    const { password: _, ...safe } = user;
+    const { password: _pw2, ...safe } = user;
     return safe;
   }
 

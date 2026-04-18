@@ -1,16 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { TEMPLATES } from "@/lib/types";
 
+function getSnapshot(): string | null {
+  return localStorage.getItem("user_id");
+}
+
+function getServerSnapshot(): string | null {
+  return null;
+}
+
+function subscribe(callback: () => void): () => void {
+  window.addEventListener("storage", callback);
+  return () => window.removeEventListener("storage", callback);
+}
+
 export default function LandingPage() {
   const router = useRouter();
-  const [userId, setUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    setUserId(localStorage.getItem("user_id"));
-  }, []);
+  const userId = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   return (
     <div className="min-h-screen flex flex-col">
