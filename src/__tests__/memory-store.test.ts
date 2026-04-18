@@ -23,7 +23,7 @@ describe("MemoryStore", () => {
       const found = memoryStore.findUserById(user.id);
       expect(found).not.toBeNull();
       expect(found!.email).toBe("id-test@example.com");
-      expect((found as Record<string, unknown>).password).toBeUndefined();
+      expect((found as unknown as Record<string, unknown>).password).toBeUndefined();
     });
   });
 
