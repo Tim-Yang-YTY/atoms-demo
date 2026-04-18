@@ -88,7 +88,7 @@ export default function LandingPage() {
           <p className="text-[#a1a1aa] text-center mb-10">Or describe your own idea from scratch</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {TEMPLATES.map((t) => (
-              <button key={t.id} onClick={() => { localStorage.setItem("pending_template", JSON.stringify(t)); router.push(userId ? "/dashboard" : "/register"); }} className="text-left p-5 rounded-xl border border-[#27272a] bg-[#18181b] hover:border-[#8b5cf6]/50 transition-all group">
+              <button key={t.id} onClick={() => { localStorage.setItem("pending_template", JSON.stringify(t)); router.push(userId ? "/dashboard" : "/register"); }} className="text-left p-5 rounded-xl border border-[#27272a] bg-[#18181b] hover:border-[#8b5cf6]/50 transition-all group cursor-pointer">
                 <span className="text-xs px-2 py-0.5 rounded-full bg-[#27272a] text-[#a1a1aa]">{t.category}</span>
                 <h3 className="font-semibold mt-3 mb-1 group-hover:text-[#8b5cf6] transition-colors">{t.name}</h3>
                 <p className="text-sm text-[#a1a1aa] leading-relaxed">{t.description}</p>

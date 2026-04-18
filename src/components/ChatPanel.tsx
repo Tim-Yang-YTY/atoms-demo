@@ -41,11 +41,19 @@ export default function ChatPanel({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Auto-trigger generation from template prompt
+  // Pre-fill input with template prompt (user clicks Send to start)
   useEffect(() => {
     if (autoPrompt && !autoTriggered && !isGenerating && messages.length === 0) {
       setAutoTriggered(true);
-      sendPrompt(autoPrompt);
+      setInput(autoPrompt);
+      // Auto-resize the textarea after pre-filling
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.style.height = "44px";
+          inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 120) + "px";
+          inputRef.current.focus();
+        }
+      }, 100);
     }
   }, [autoPrompt, autoTriggered]); // eslint-disable-line react-hooks/exhaustive-deps
 
