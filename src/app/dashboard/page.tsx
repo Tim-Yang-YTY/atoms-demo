@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import type { Project, Template } from "@/lib/types";
 import { TEMPLATES } from "@/lib/types";
+import { DEFAULT_AGENT_CONFIGS, saveAgentConfig, resetAgentConfig, type AgentConfig } from "@/lib/agents/config";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -13,6 +14,14 @@ export default function DashboardPage() {
   const [showNew, setShowNew] = useState(false);
   const [newName, setNewName] = useState("");
   const [newDesc, setNewDesc] = useState("");
+  const [expandedAgent, setExpandedAgent] = useState<string | null>(null);
+  const [agentPrompts, setAgentPrompts] = useState<Record<string, string>>(() => {
+    const prompts: Record<string, string> = {};
+    for (const [id, config] of Object.entries(DEFAULT_AGENT_CONFIGS)) {
+      prompts[id] = config.systemPrompt;
+    }
+    return prompts;
+  });
   const userId = typeof window !== "undefined" ? localStorage.getItem("user_id") : null;
   const userName = typeof window !== "undefined" ? localStorage.getItem("user_name") : null;
 
@@ -52,6 +61,34 @@ export default function DashboardPage() {
       } catch { /* ignore */ }
     }
   }, [userId, router, loadProjects, createProject]);
+
+  // Load saved agent prompt overrides from localStorage
+  useEffect(() => {
+    const prompts: Record<string, string> = {};
+    for (const [id, config] of Object.entries(DEFAULT_AGENT_CONFIGS)) {
+      try {
+        const saved = localStorage.getItem(`agent_config_${id}`);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          prompts[id] = parsed.systemPrompt || config.systemPrompt;
+        } else {
+          prompts[id] = config.systemPrompt;
+        }
+      } catch {
+        prompts[id] = config.systemPrompt;
+      }
+    }
+    setAgentPrompts(prompts); // eslint-disable-line react-hooks/set-state-in-effect -- loading saved configs on mount
+  }, []);
+
+  const handleSaveAgentPrompt = (agentId: string) => {
+    saveAgentConfig(agentId, { systemPrompt: agentPrompts[agentId] });
+  };
+
+  const handleResetAgentPrompt = (agentId: string) => {
+    resetAgentConfig(agentId);
+    setAgentPrompts((prev) => ({ ...prev, [agentId]: DEFAULT_AGENT_CONFIGS[agentId].systemPrompt }));
+  };
 
   const deleteProject = async (id: string) => {
     if (!confirm("Delete this project?")) return;
@@ -151,6 +188,96 @@ export default function DashboardPage() {
             ))}
           </div>
         )}
+
+        {/* Agents section */}
+        <div className="mt-12 mb-8">
+          <h2 className="text-xl font-bold mb-1">AI Agents</h2>
+          <p className="text-sm text-[#71717a] mb-6">Click an agent to view and customize its system prompt</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {Object.values(DEFAULT_AGENT_CONFIGS).map((agent) => {
+              const isExpanded = expandedAgent === agent.id;
+              const isModified = agentPrompts[agent.id] !== DEFAULT_AGENT_CONFIGS[agent.id].systemPrompt;
+              return (
+                <div key={agent.id} className={`rounded-xl border bg-[#18181b] transition-all ${isExpanded ? "border-[" + agent.color + "]/50 col-span-1 sm:col-span-3" : "border-[#27272a] hover:border-[#3f3f46] cursor-pointer"}`}>
+                  <button
+                    onClick={() => setExpandedAgent(isExpanded ? null : agent.id)}
+                    className="w-full text-left p-5 cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold shrink-0" style={{ backgroundColor: agent.color + "22", color: agent.color }}>{agent.avatar}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold">{agent.name}</h3>
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-[#27272a] text-[#71717a]">Phase {agent.pipelinePhase}</span>
+                          {isModified && <span className="text-xs px-1.5 py-0.5 rounded bg-[#f97316]/20 text-[#f97316]">Modified</span>}
+                        </div>
+                        <p className="text-sm text-[#71717a] mt-0.5">{agent.role}</p>
+                      </div>
+                      <span className="text-[#52525b] text-sm">{isExpanded ? "▲" : "▼"}</span>
+                    </div>
+                  </button>
+                  {isExpanded && (
+                    <div className="px-5 pb-5 animate-fade-in">
+                      <div className="border-t border-[#27272a] pt-4 space-y-4">
+                        {/* System Prompt */}
+                        <div>
+                          <label className="text-xs font-medium text-[#a1a1aa] mb-2 block">System Prompt</label>
+                          <textarea
+                            value={agentPrompts[agent.id] || ""}
+                            onChange={(e) => setAgentPrompts((prev) => ({ ...prev, [agent.id]: e.target.value }))}
+                            rows={6}
+                            className="w-full px-4 py-3 bg-[#09090b] border border-[#27272a] rounded-lg text-sm text-white outline-none focus:border-[#8b5cf6] resize-y font-mono leading-relaxed"
+                          />
+                          <div className="flex items-center justify-between mt-2">
+                            <button onClick={() => handleResetAgentPrompt(agent.id)} className="text-xs text-[#71717a] hover:text-white transition-colors cursor-pointer">Reset to default</button>
+                            <button onClick={() => handleSaveAgentPrompt(agent.id)} className="px-3 py-1.5 bg-[#8b5cf6] hover:bg-[#7c3aed] text-white rounded-lg text-xs font-medium transition-colors cursor-pointer">Save</button>
+                          </div>
+                        </div>
+                        {/* Constraints */}
+                        <div>
+                          <label className="text-xs font-medium text-[#a1a1aa] mb-2 block">Constraints</label>
+                          <ul className="space-y-1">
+                            {agent.constraints.map((c, i) => (
+                              <li key={i} className="text-xs text-[#a1a1aa] flex items-start gap-2">
+                                <span className="text-[#52525b] mt-0.5 shrink-0">-</span>{c}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                        {/* Parameters & Tools */}
+                        <div className="flex gap-6 flex-wrap">
+                          <div>
+                            <label className="text-xs font-medium text-[#a1a1aa] mb-1 block">Parameters</label>
+                            <div className="text-xs text-[#71717a] space-y-0.5">
+                              <div>Temperature: <span className="text-white">{agent.parameters.temperature}</span></div>
+                              <div>Max tokens: <span className="text-white">{agent.parameters.maxTokens.toLocaleString()}</span></div>
+                            </div>
+                          </div>
+                          {agent.tools.length > 0 && (
+                            <div>
+                              <label className="text-xs font-medium text-[#a1a1aa] mb-1 block">Tools</label>
+                              <div className="flex gap-1.5 flex-wrap">
+                                {agent.tools.map((t) => (
+                                  <span key={t} className="text-xs px-2 py-0.5 rounded bg-[#27272a] text-[#a1a1aa] font-mono">{t}</span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {agent.fewShotExamples.length > 0 && (
+                            <div>
+                              <label className="text-xs font-medium text-[#a1a1aa] mb-1 block">Few-shot examples</label>
+                              <span className="text-xs text-[#71717a]">{agent.fewShotExamples.length} example{agent.fewShotExamples.length > 1 ? "s" : ""} configured</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
         {/* Templates section */}
         <div className="mt-12 mb-8">
