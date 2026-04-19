@@ -46,23 +46,77 @@ toolRegistry.register({
 
 toolRegistry.register({
   name: "clarify_intent",
-  description: "Analyze user request for ambiguity and identify what needs clarification",
+  description: "Classify user intent, extract structured intent fields, and assess ambiguity",
   execute: async (input) => {
     const prompt = (input.prompt as string) || "";
     const words = prompt.split(/\s+/).length;
-    const hasAppType = /\b(app|dashboard|tracker|editor|game|tool|manager|timer|calculator|viewer)\b/i.test(prompt);
-    const hasFeatures = /\b(login|register|add|edit|delete|search|filter|chart|list|form|drag|sort|export|import|save)\b/i.test(prompt);
+
+    // --- Intent classification ---
+    const intentSignals = {
+      build: /\b(build|create|make|generate|develop|write)\b/i.test(prompt),
+      modify: /\b(change|update|modify|improve|fix|refactor|add .+ to)\b/i.test(prompt),
+      explain: /\b(explain|what is|how does|describe|tell me)\b/i.test(prompt),
+      question: /\?$/.test(prompt.trim()),
+    };
+    const intentType = intentSignals.build ? "build" : intentSignals.modify ? "modify" : intentSignals.explain ? "explain" : intentSignals.question ? "question" : "build";
+
+    // --- App domain extraction ---
+    const domainPatterns: Record<string, RegExp> = {
+      finance: /expense|budget|invoice|payment|money|financial/i,
+      productivity: /todo|task|kanban|project|calendar|schedule|timer|pomodoro/i,
+      social: /chat|message|feed|profile|friend|post|comment/i,
+      utility: /weather|calculator|converter|clock|note|editor|viewer/i,
+      ecommerce: /shop|cart|product|order|checkout|store/i,
+      game: /game|quiz|puzzle|score|level|play/i,
+      health: /fitness|health|workout|diet|calorie|step/i,
+    };
+    const domains = Object.entries(domainPatterns)
+      .filter(([, rx]) => rx.test(prompt))
+      .map(([name]) => name);
+
+    // --- Feature extraction ---
+    const featurePatterns: Record<string, RegExp> = {
+      authentication: /login|register|auth|sign.?in|sign.?up|account/i,
+      crud: /add|create|edit|update|delete|remove/i,
+      search: /search|find|filter|query/i,
+      data_display: /list|table|grid|card|dashboard|view/i,
+      charts: /chart|graph|pie|bar|line|visual/i,
+      persistence: /save|store|persist|localStorage|database/i,
+      categories: /categor|tag|label|group|folder|type/i,
+      responsive: /responsive|mobile|viewport/i,
+      drag_drop: /drag|drop|sortable|reorder/i,
+      export: /export|import|download|upload|csv|pdf/i,
+      timer: /timer|countdown|stopwatch|clock/i,
+      notifications: /notif|alert|remind|toast/i,
+    };
+    const features = Object.entries(featurePatterns)
+      .filter(([, rx]) => rx.test(prompt))
+      .map(([name]) => name);
+
+    // --- App type detection ---
+    const hasAppType = /\b(app|dashboard|tracker|editor|game|tool|manager|timer|calculator|viewer|board|platform)\b/i.test(prompt);
+
+    // --- Ambiguity assessment ---
     const ambiguities: string[] = [];
     if (words < 5) ambiguities.push("Request is very brief — may need more detail");
-    if (!hasAppType) ambiguities.push("No clear app type specified");
-    if (!hasFeatures) ambiguities.push("No specific features mentioned");
+    if (!hasAppType && intentType === "build") ambiguities.push("No clear app type specified");
+    if (features.length === 0 && intentType === "build") ambiguities.push("No specific features mentioned");
+    if (domains.length === 0 && intentType === "build") ambiguities.push("No clear app domain detected");
+    if (domains.length > 2) ambiguities.push("Multiple domains detected — scope may be too broad");
+
+    // --- Complexity estimation ---
+    const complexity = features.length > 6 ? "complex" : features.length > 3 ? "medium" : "simple";
+
     return JSON.stringify({
+      intentType,
+      domains,
+      features,
       wordCount: words,
       hasAppType,
-      hasFeatures,
       ambiguities,
       needsClarification: ambiguities.length > 1,
       confidence: ambiguities.length === 0 ? "high" : ambiguities.length === 1 ? "medium" : "low",
+      complexity,
     });
   },
 });
