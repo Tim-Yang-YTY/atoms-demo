@@ -69,6 +69,74 @@ Claude Code: ultrathink → 规划架构 → 分文件实现 → typecheck → b
 
 ---
 
+## 意图识别与需求对齐
+
+用户输入往往模糊（"帮我做个记账 app"），Agent 容易在隐性假设上越走越远。我们的意图系统不只是分类，而是**把模糊需求变成结构化的、可验证的规格**，在生成代码之前就对齐理解。
+
+### 流程
+
+```
+用户输入 → clarify_intent 工具 → 结构化意图解析 → Orchestrator 明确陈述假设 → PM 确认/调整 → Engineer 执行
+```
+
+### clarify_intent 工具输出
+
+| 字段 | 说明 | 示例 |
+|------|------|------|
+| `intentType` | 用户意图分类 | `build` / `modify` / `explain` / `question` |
+| `domains` | 应用领域 | `["finance", "productivity"]` |
+| `features` | 检测到的功能点 | `["authentication", "crud", "charts", "persistence"]` |
+| `complexity` | 复杂度评估 | `simple` / `medium` / `complex` |
+| `ambiguities` | 需求缺口 | `["No clear app type specified", "No specific features mentioned"]` |
+| `confidence` | 对齐置信度 | `high` / `medium` / `low` |
+
+### 需求对齐机制
+
+Orchestrator 收到解析结果后，**必须**在输出中明确：
+1. **我理解你要什么** — 把用户需求翻译成具体的功能列表
+2. **我做了哪些假设** — 用户没说但我推断的功能（如"记账 app"隐含需要分类、图表、持久化）
+3. **哪些地方不确定** — ambiguities 字段中的缺口
+
+这些信息传递给 PM，PM 在此基础上确认或调整，而不是从零开始猜测。仲裁官最终评估时也参考 Orchestrator 的解释，确保评估标准与用户意图一致。
+
+---
+
+## ReAct 循环安全机制
+
+ReAct（Plan → Execute → Observe → Reflect）循环如果不加约束，可能出现死循环：仲裁官一直 FAIL → Engineer 改不好 → 再 FAIL。我们用四层防护避免这个问题：
+
+### 防护层级
+
+| 层级 | 机制 | 位置 | 说明 |
+|------|------|------|------|
+| L1 | **迭代硬上限** | `MAX_ITERATIONS = 3` | 无论如何最多 3 轮，到达上限强制终止 |
+| L2 | **重复反馈检测** | `bigramSimilarity()` | 比较连续两轮仲裁官反馈的 bigram 相似度，>80% 提前终止（再迭代无意义） |
+| L3 | **单 Agent 超时** | `AGENT_TIMEOUT_MS = 60s` | 每个 Agent 的 LLM 调用有 60s 硬超时，防止单个 Agent 卡死阻塞全管线 |
+| L4 | **单 Agent 步骤上限** | `MAX_STEPS_PER_AGENT = 6` | 每个 Agent 每轮最多 6 次工具调用，防止未来扩展内部 tool loop 时失控 |
+
+### 重复反馈检测原理
+
+```
+Round 1: 仲裁官 FAIL → "缺少分类功能、没有图表"
+Round 2: 仲裁官 FAIL → "缺少分类功能、没有图表"  ← bigram 相似度 92%
+→ 检测到重复，提前终止（不进 Round 3）
+```
+
+用 bigram overlap 而非精确匹配，因为 LLM 每次措辞略有不同但核心内容相同。阈值 0.8 在实践中能有效区分"同样的问题"和"不同的问题"。
+
+### 超时机制实现
+
+```typescript
+// 每个 Agent 的 LLM 调用被 Promise.race 包装
+collectStream(prompt, messages, "Engineer", onChunk)
+  → withTimeout(streamPromise, 60_000, "Engineer")
+    → Promise.race([streamPromise, timeoutReject])
+```
+
+超时抛出异常，被 `generate/route.ts` 的 try-catch 捕获，发送 `error` SSE 事件到前端。
+
+---
+
 ## 实现思路与关键取舍
 
 ### 架构选择
