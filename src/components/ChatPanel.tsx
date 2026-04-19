@@ -2,13 +2,20 @@
 
 import { useState, useRef, useEffect } from "react";
 import AgentMessage from "./AgentMessage";
-import type { AgentRole, SSEEvent, Message } from "@/lib/types";
+import AgentStepMessage from "./AgentStepMessage";
+import PipelineProgress from "./PipelineProgress";
+import type { AgentRole, AgentStep, PipelineAgent, SSEEvent, Message } from "@/lib/types";
 
 interface ChatMessage {
   id: string;
+  type: "message" | "step" | "pipeline";
   role: "user" | AgentRole;
   content: string;
   isStreaming?: boolean;
+  step?: AgentStep;
+  pipeline?: PipelineAgent[];
+  iteration?: number;
+  maxIterations?: number;
 }
 
 interface Props {
@@ -29,7 +36,7 @@ export default function ChatPanel({
   onGeneratingChange,
 }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>(
-    initialMessages.map((m) => ({ id: m.id, role: m.role, content: m.content }))
+    initialMessages.map((m) => ({ id: m.id, type: "message" as const, role: m.role, content: m.content }))
   );
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -46,7 +53,6 @@ export default function ChatPanel({
     if (autoPrompt && !autoTriggered && !isGenerating && messages.length === 0) {
       setAutoTriggered(true);
       setInput(autoPrompt);
-      // Auto-resize the textarea after pre-filling
       setTimeout(() => {
         if (inputRef.current) {
           inputRef.current.style.height = "44px";
@@ -64,9 +70,9 @@ export default function ChatPanel({
     setIsGenerating(true);
     onGeneratingChange(true);
 
-    // Add user message
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
+      type: "message",
       role: "user",
       content: prompt,
     };
@@ -101,11 +107,60 @@ export default function ChatPanel({
           try {
             const event: SSEEvent = JSON.parse(line.slice(6));
 
+            // Pipeline progress
+            if (event.type === "pipeline_update" && event.pipeline) {
+              setMessages((prev) => {
+                // Update existing pipeline message or add new one
+                const existing = prev.findIndex((m) => m.type === "pipeline");
+                const pipelineMsg: ChatMessage = {
+                  id: existing >= 0 ? prev[existing].id : crypto.randomUUID(),
+                  type: "pipeline",
+                  role: "system",
+                  content: "",
+                  pipeline: event.pipeline,
+                  iteration: event.iteration,
+                  maxIterations: event.maxIterations,
+                };
+                if (existing >= 0) {
+                  return prev.map((m, i) => (i === existing ? pipelineMsg : m));
+                }
+                return [...prev, pipelineMsg];
+              });
+            }
+
+            // Iteration marker
+            if (event.type === "iteration") {
+              // Update pipeline with iteration info
+              setMessages((prev) => {
+                const existing = prev.findIndex((m) => m.type === "pipeline");
+                if (existing >= 0) {
+                  return prev.map((m, i) =>
+                    i === existing ? { ...m, iteration: event.iteration, maxIterations: event.maxIterations } : m
+                  );
+                }
+                return prev;
+              });
+            }
+
+            // Agent step (ReAct)
+            if (event.type === "agent_step" && event.step) {
+              setMessages((prev) => [
+                ...prev,
+                {
+                  id: crypto.randomUUID(),
+                  type: "step",
+                  role: event.agent || "system",
+                  content: event.step!.content,
+                  step: event.step,
+                },
+              ]);
+            }
+
             if (event.type === "agent_start" && event.agent) {
               currentAgentId = crypto.randomUUID();
               setMessages((prev) => [
                 ...prev,
-                { id: currentAgentId!, role: event.agent!, content: "", isStreaming: true },
+                { id: currentAgentId!, type: "message", role: event.agent!, content: "", isStreaming: true },
               ]);
             }
 
@@ -133,7 +188,7 @@ export default function ChatPanel({
             if (event.type === "error") {
               setMessages((prev) => [
                 ...prev,
-                { id: crypto.randomUUID(), role: "system", content: `Error: ${event.content}` },
+                { id: crypto.randomUUID(), type: "message", role: "system", content: `Error: ${event.content}` },
               ]);
             }
           } catch {
@@ -146,6 +201,7 @@ export default function ChatPanel({
         ...prev,
         {
           id: crypto.randomUUID(),
+          type: "message",
           role: "system",
           content: `Error: ${err instanceof Error ? err.message : "Unknown error"}`,
         },
@@ -176,18 +232,33 @@ export default function ChatPanel({
             <div className="text-center">
               <div className="text-4xl mb-3">💬</div>
               <p className="text-sm">Describe what you want to build</p>
-              <p className="text-xs text-[#27272a] mt-1">The AI team will build it for you</p>
+              <p className="text-xs text-[#27272a] mt-1">5 AI agents will collaborate to build it</p>
             </div>
           </div>
         )}
-        {messages.map((msg) => (
-          <AgentMessage
-            key={msg.id}
-            role={msg.role}
-            content={msg.content}
-            isStreaming={msg.isStreaming}
-          />
-        ))}
+        {messages.map((msg) => {
+          if (msg.type === "pipeline" && msg.pipeline) {
+            return (
+              <PipelineProgress
+                key={msg.id}
+                pipeline={msg.pipeline}
+                iteration={msg.iteration}
+                maxIterations={msg.maxIterations}
+              />
+            );
+          }
+          if (msg.type === "step" && msg.step) {
+            return <AgentStepMessage key={msg.id} step={msg.step} />;
+          }
+          return (
+            <AgentMessage
+              key={msg.id}
+              role={msg.role}
+              content={msg.content}
+              isStreaming={msg.isStreaming}
+            />
+          );
+        })}
         <div ref={messagesEndRef} />
       </div>
 
