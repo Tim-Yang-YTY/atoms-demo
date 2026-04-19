@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import type { Project, Template } from "@/lib/types";
 import { TEMPLATES } from "@/lib/types";
-import { DEFAULT_AGENT_CONFIGS, saveAgentConfig, resetAgentConfig, type AgentConfig } from "@/lib/agents/config";
+import { DEFAULT_AGENT_CONFIGS, saveAgentConfig, resetAgentConfig } from "@/lib/agents/config";
+import { getSkillsForAgent } from "@/lib/skills/registry";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -15,12 +16,12 @@ export default function DashboardPage() {
   const [newName, setNewName] = useState("");
   const [newDesc, setNewDesc] = useState("");
   const [expandedAgent, setExpandedAgent] = useState<string | null>(null);
-  const [agentPrompts, setAgentPrompts] = useState<Record<string, string>>(() => {
-    const prompts: Record<string, string> = {};
+  const [agentOverrides, setAgentOverrides] = useState<Record<string, { prompt: string; temperature: number; maxTokens: number }>>(() => {
+    const overrides: Record<string, { prompt: string; temperature: number; maxTokens: number }> = {};
     for (const [id, config] of Object.entries(DEFAULT_AGENT_CONFIGS)) {
-      prompts[id] = config.systemPrompt;
+      overrides[id] = { prompt: config.systemPrompt, temperature: config.parameters.temperature, maxTokens: config.parameters.maxTokens };
     }
-    return prompts;
+    return overrides;
   });
   const userId = typeof window !== "undefined" ? localStorage.getItem("user_id") : null;
   const userName = typeof window !== "undefined" ? localStorage.getItem("user_name") : null;
@@ -62,32 +63,38 @@ export default function DashboardPage() {
     }
   }, [userId, router, loadProjects, createProject]);
 
-  // Load saved agent prompt overrides from localStorage
+  // Load saved agent overrides from localStorage
   useEffect(() => {
-    const prompts: Record<string, string> = {};
+    const overrides: Record<string, { prompt: string; temperature: number; maxTokens: number }> = {};
     for (const [id, config] of Object.entries(DEFAULT_AGENT_CONFIGS)) {
       try {
         const saved = localStorage.getItem(`agent_config_${id}`);
         if (saved) {
           const parsed = JSON.parse(saved);
-          prompts[id] = parsed.systemPrompt || config.systemPrompt;
+          overrides[id] = {
+            prompt: parsed.systemPrompt || config.systemPrompt,
+            temperature: parsed.parameters?.temperature ?? config.parameters.temperature,
+            maxTokens: parsed.parameters?.maxTokens ?? config.parameters.maxTokens,
+          };
         } else {
-          prompts[id] = config.systemPrompt;
+          overrides[id] = { prompt: config.systemPrompt, temperature: config.parameters.temperature, maxTokens: config.parameters.maxTokens };
         }
       } catch {
-        prompts[id] = config.systemPrompt;
+        overrides[id] = { prompt: config.systemPrompt, temperature: config.parameters.temperature, maxTokens: config.parameters.maxTokens };
       }
     }
-    setAgentPrompts(prompts); // eslint-disable-line react-hooks/set-state-in-effect -- loading saved configs on mount
+    setAgentOverrides(overrides); // eslint-disable-line react-hooks/set-state-in-effect -- loading saved configs on mount
   }, []);
 
-  const handleSaveAgentPrompt = (agentId: string) => {
-    saveAgentConfig(agentId, { systemPrompt: agentPrompts[agentId] });
+  const handleSaveAgent = (agentId: string) => {
+    const o = agentOverrides[agentId];
+    saveAgentConfig(agentId, { systemPrompt: o.prompt, parameters: { temperature: o.temperature, maxTokens: o.maxTokens } });
   };
 
-  const handleResetAgentPrompt = (agentId: string) => {
+  const handleResetAgent = (agentId: string) => {
     resetAgentConfig(agentId);
-    setAgentPrompts((prev) => ({ ...prev, [agentId]: DEFAULT_AGENT_CONFIGS[agentId].systemPrompt }));
+    const d = DEFAULT_AGENT_CONFIGS[agentId];
+    setAgentOverrides((prev) => ({ ...prev, [agentId]: { prompt: d.systemPrompt, temperature: d.parameters.temperature, maxTokens: d.parameters.maxTokens } }));
   };
 
   const deleteProject = async (id: string) => {
@@ -192,13 +199,19 @@ export default function DashboardPage() {
         {/* Agents section */}
         <div className="mt-12 mb-8">
           <h2 className="text-xl font-bold mb-1">AI Agents</h2>
-          <p className="text-sm text-[#71717a] mb-6">Click an agent to view and customize its system prompt</p>
+          <p className="text-sm text-[#71717a] mb-6">Click an agent to view and customize its configuration</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {Object.values(DEFAULT_AGENT_CONFIGS).map((agent) => {
               const isExpanded = expandedAgent === agent.id;
-              const isModified = agentPrompts[agent.id] !== DEFAULT_AGENT_CONFIGS[agent.id].systemPrompt;
+              const override = agentOverrides[agent.id];
+              const isModified = override && (
+                override.prompt !== DEFAULT_AGENT_CONFIGS[agent.id].systemPrompt ||
+                override.temperature !== DEFAULT_AGENT_CONFIGS[agent.id].parameters.temperature ||
+                override.maxTokens !== DEFAULT_AGENT_CONFIGS[agent.id].parameters.maxTokens
+              );
+              const skills = getSkillsForAgent(agent.id);
               return (
-                <div key={agent.id} className={`rounded-xl border bg-[#18181b] transition-all ${isExpanded ? "border-[" + agent.color + "]/50 col-span-1 sm:col-span-3" : "border-[#27272a] hover:border-[#3f3f46] cursor-pointer"}`}>
+                <div key={agent.id} className={`rounded-xl border bg-[#18181b] transition-all ${isExpanded ? "col-span-1 sm:col-span-3" : "hover:border-[#3f3f46] cursor-pointer"}`} style={{ borderColor: isExpanded ? agent.color + "80" : undefined }}>
                   <button
                     onClick={() => setExpandedAgent(isExpanded ? null : agent.id)}
                     className="w-full text-left p-5 cursor-pointer"
@@ -216,27 +229,53 @@ export default function DashboardPage() {
                       <span className="text-[#52525b] text-sm">{isExpanded ? "▲" : "▼"}</span>
                     </div>
                   </button>
-                  {isExpanded && (
+                  {isExpanded && override && (
                     <div className="px-5 pb-5 animate-fade-in">
-                      <div className="border-t border-[#27272a] pt-4 space-y-4">
+                      <div className="border-t border-[#27272a] pt-4 space-y-5">
                         {/* System Prompt */}
                         <div>
                           <label className="text-xs font-medium text-[#a1a1aa] mb-2 block">System Prompt</label>
                           <textarea
-                            value={agentPrompts[agent.id] || ""}
-                            onChange={(e) => setAgentPrompts((prev) => ({ ...prev, [agent.id]: e.target.value }))}
+                            value={override.prompt}
+                            onChange={(e) => setAgentOverrides((prev) => ({ ...prev, [agent.id]: { ...prev[agent.id], prompt: e.target.value } }))}
                             rows={6}
                             className="w-full px-4 py-3 bg-[#09090b] border border-[#27272a] rounded-lg text-sm text-white outline-none focus:border-[#8b5cf6] resize-y font-mono leading-relaxed"
                           />
-                          <div className="flex items-center justify-between mt-2">
-                            <button onClick={() => handleResetAgentPrompt(agent.id)} className="text-xs text-[#71717a] hover:text-white transition-colors cursor-pointer">Reset to default</button>
-                            <button onClick={() => handleSaveAgentPrompt(agent.id)} className="px-3 py-1.5 bg-[#8b5cf6] hover:bg-[#7c3aed] text-white rounded-lg text-xs font-medium transition-colors cursor-pointer">Save</button>
+                        </div>
+                        {/* Parameters */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-xs font-medium text-[#a1a1aa] mb-2 block">Temperature: {override.temperature}</label>
+                            <input
+                              type="range"
+                              min="0"
+                              max="2"
+                              step="0.1"
+                              value={override.temperature}
+                              onChange={(e) => setAgentOverrides((prev) => ({ ...prev, [agent.id]: { ...prev[agent.id], temperature: parseFloat(e.target.value) } }))}
+                              className="w-full accent-[#8b5cf6]"
+                            />
+                            <div className="flex justify-between text-xs text-[#52525b] mt-1">
+                              <span>Precise (0)</span><span>Creative (2)</span>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium text-[#a1a1aa] mb-2 block">Max Tokens</label>
+                            <input
+                              type="number"
+                              min="256"
+                              max="16384"
+                              step="256"
+                              value={override.maxTokens}
+                              onChange={(e) => setAgentOverrides((prev) => ({ ...prev, [agent.id]: { ...prev[agent.id], maxTokens: parseInt(e.target.value) || 2048 } }))}
+                              className="w-full px-3 py-2 bg-[#09090b] border border-[#27272a] rounded-lg text-sm text-white outline-none focus:border-[#8b5cf6]"
+                            />
                           </div>
                         </div>
                         {/* Constraints */}
                         <div>
                           <label className="text-xs font-medium text-[#a1a1aa] mb-2 block">Constraints</label>
-                          <ul className="space-y-1">
+                          <ul className="space-y-1.5">
                             {agent.constraints.map((c, i) => (
                               <li key={i} className="text-xs text-[#a1a1aa] flex items-start gap-2">
                                 <span className="text-[#52525b] mt-0.5 shrink-0">-</span>{c}
@@ -244,18 +283,11 @@ export default function DashboardPage() {
                             ))}
                           </ul>
                         </div>
-                        {/* Parameters & Tools */}
+                        {/* Tools & Few-shots */}
                         <div className="flex gap-6 flex-wrap">
-                          <div>
-                            <label className="text-xs font-medium text-[#a1a1aa] mb-1 block">Parameters</label>
-                            <div className="text-xs text-[#71717a] space-y-0.5">
-                              <div>Temperature: <span className="text-white">{agent.parameters.temperature}</span></div>
-                              <div>Max tokens: <span className="text-white">{agent.parameters.maxTokens.toLocaleString()}</span></div>
-                            </div>
-                          </div>
                           {agent.tools.length > 0 && (
                             <div>
-                              <label className="text-xs font-medium text-[#a1a1aa] mb-1 block">Tools</label>
+                              <label className="text-xs font-medium text-[#a1a1aa] mb-1.5 block">Tools</label>
                               <div className="flex gap-1.5 flex-wrap">
                                 {agent.tools.map((t) => (
                                   <span key={t} className="text-xs px-2 py-0.5 rounded bg-[#27272a] text-[#a1a1aa] font-mono">{t}</span>
@@ -265,10 +297,28 @@ export default function DashboardPage() {
                           )}
                           {agent.fewShotExamples.length > 0 && (
                             <div>
-                              <label className="text-xs font-medium text-[#a1a1aa] mb-1 block">Few-shot examples</label>
+                              <label className="text-xs font-medium text-[#a1a1aa] mb-1.5 block">Few-shot Examples</label>
                               <span className="text-xs text-[#71717a]">{agent.fewShotExamples.length} example{agent.fewShotExamples.length > 1 ? "s" : ""} configured</span>
                             </div>
                           )}
+                        </div>
+                        {/* Skills */}
+                        {skills.length > 0 && (
+                          <div>
+                            <label className="text-xs font-medium text-[#a1a1aa] mb-2 block">Skills</label>
+                            <div className="flex gap-2 flex-wrap">
+                              {skills.map((s) => (
+                                <span key={s.id} className="text-xs px-2.5 py-1 rounded-md border border-[#27272a] text-[#a1a1aa] bg-[#09090b]" title={s.description}>
+                                  {s.name}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {/* Save / Reset */}
+                        <div className="flex items-center justify-between pt-2 border-t border-[#27272a]">
+                          <button onClick={() => handleResetAgent(agent.id)} className="text-xs text-[#71717a] hover:text-white transition-colors cursor-pointer">Reset to default</button>
+                          <button onClick={() => handleSaveAgent(agent.id)} className="px-4 py-1.5 bg-[#8b5cf6] hover:bg-[#7c3aed] text-white rounded-lg text-xs font-medium transition-colors cursor-pointer">Save Configuration</button>
                         </div>
                       </div>
                     </div>
