@@ -1,4 +1,4 @@
-# Atoms Demo — AI Multi-Agent App Builder
+# Atoms Demo — Agentic App Builder
 
 一个基于多 Agent 协作架构的 AI 应用生成器。用户描述想法，5 个 AI Agent（Orchestrator → PM → Engineer → Designer → 仲裁官）通过 ReAct 循环协作，实时生成完整的单文件 Web 应用。
 
@@ -14,6 +14,8 @@ pnpm dev          # http://localhost:3000
 ```
 
 可选：设置 `ANTHROPIC_API_KEY` 或 `OPENAI_API_KEY` 环境变量启用真实 LLM。未设置时自动使用 mock 模式。
+
+> **重要说明**：Mock 模式下无法真正修改代码（需要真实 LLM）。设置 `ANTHROPIC_API_KEY` 或 `OPENAI_API_KEY` 后，follow-up 修改请求会正确地把现有代码 + 修改指令传给 LLM，实现真正的增量编辑。
 
 ---
 

@@ -1,6 +1,6 @@
 // ============================================================
-// Generate API — SSE streaming endpoint for multi-agent orchestration
-// SSE streaming endpoint for multi-agent orchestration
+// Generate API — SSE streaming endpoint for agentic orchestration
+// SSE streaming endpoint for agentic orchestration
 // This is the core AI-native endpoint
 // ============================================================
 
