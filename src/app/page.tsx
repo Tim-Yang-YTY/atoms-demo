@@ -80,63 +80,80 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Agent cards */}
-        <div className="max-w-5xl w-full mx-auto mb-20">
-          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-            {Object.values(DEFAULT_AGENT_CONFIGS).map((agent) => {
+        {/* Agent Arena */}
+        <div className="max-w-3xl w-full mx-auto mb-20">
+          <h2 className="text-3xl font-bold text-center mb-2">Agent Arena</h2>
+          <p className="text-[#a1a1aa] text-center mb-8">5 specialized agents collaborate in a ReAct pipeline. Click to inspect and customize.</p>
+          <div className="flex flex-col gap-3">
+            {Object.values(DEFAULT_AGENT_CONFIGS).map((agent, index) => {
               const isExpanded = expandedAgent === agent.id;
               const isModified = agentPrompts[agent.id] !== DEFAULT_AGENT_CONFIGS[agent.id].systemPrompt;
               return (
-                <div key={agent.id} className={`rounded-xl border bg-[#18181b] transition-all ${isExpanded ? "border-[#3f3f46] col-span-1 sm:col-span-3 lg:col-span-5" : "border-[#27272a] hover:border-[#3f3f46] cursor-pointer"}`}>
-                  <button
-                    onClick={() => setExpandedAgent(isExpanded ? null : agent.id)}
-                    className="w-full text-left p-5 cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold shrink-0" style={{ backgroundColor: agent.color + "22", color: agent.color }}>{agent.avatar}</div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold">{agent.name}</h3>
-                          {isModified && <span className="text-xs px-1.5 py-0.5 rounded bg-[#f97316]/20 text-[#f97316]">Modified</span>}
-                        </div>
-                        <p className="text-sm text-[#a1a1aa] leading-relaxed">{agent.role}</p>
-                      </div>
-                      <span className="text-[#52525b] text-sm">{isExpanded ? "▲" : "▼"}</span>
-                    </div>
-                  </button>
-                  {isExpanded && (
-                    <div className="px-5 pb-5 animate-fade-in">
-                      <div className="border-t border-[#27272a] pt-4 space-y-4">
-                        <div>
-                          <label className="text-xs font-medium text-[#a1a1aa] mb-2 block">System Prompt</label>
-                          <textarea
-                            value={agentPrompts[agent.id] || ""}
-                            onChange={(e) => setAgentPrompts((prev) => ({ ...prev, [agent.id]: e.target.value }))}
-                            rows={5}
-                            className="w-full px-4 py-3 bg-[#09090b] border border-[#27272a] rounded-lg text-sm text-white outline-none focus:border-[#8b5cf6] resize-y font-mono leading-relaxed"
-                          />
-                          <div className="flex items-center justify-between mt-2">
-                            <button onClick={() => { resetAgentConfig(agent.id); setAgentPrompts((prev) => ({ ...prev, [agent.id]: DEFAULT_AGENT_CONFIGS[agent.id].systemPrompt })); }} className="text-xs text-[#71717a] hover:text-white transition-colors cursor-pointer">Reset to default</button>
-                            <button onClick={() => saveAgentConfig(agent.id, { systemPrompt: agentPrompts[agent.id] })} className="px-3 py-1.5 bg-[#8b5cf6] hover:bg-[#7c3aed] text-white rounded-lg text-xs font-medium transition-colors cursor-pointer">Save</button>
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-xs font-medium text-[#a1a1aa] mb-2 block">Constraints</label>
-                          <ul className="space-y-1">
-                            {agent.constraints.map((c, i) => (
-                              <li key={i} className="text-xs text-[#a1a1aa] flex items-start gap-2"><span className="text-[#52525b] mt-0.5 shrink-0">-</span>{c}</li>
-                            ))}
-                          </ul>
-                        </div>
-                        <div className="flex gap-6 flex-wrap text-xs text-[#71717a]">
-                          <div>Temperature: <span className="text-white">{agent.parameters.temperature}</span></div>
-                          <div>Max tokens: <span className="text-white">{agent.parameters.maxTokens.toLocaleString()}</span></div>
-                          {agent.tools.length > 0 && <div>Tools: {agent.tools.map(t => <span key={t} className="ml-1 px-1.5 py-0.5 rounded bg-[#27272a] text-[#a1a1aa] font-mono">{t}</span>)}</div>}
-                          <div>{agent.fewShotExamples.length} few-shot example{agent.fewShotExamples.length > 1 ? "s" : ""}</div>
-                        </div>
-                      </div>
+                <div key={agent.id}>
+                  {/* Pipeline connector */}
+                  {index > 0 && (
+                    <div className="flex justify-center -mt-3 -mb-3 relative z-0">
+                      <div className="w-px h-6 bg-[#27272a]" />
                     </div>
                   )}
+                  <div className={`rounded-xl border bg-[#18181b] transition-all relative z-10 ${isExpanded ? "border-[#3f3f46]" : "border-[#27272a] hover:border-[#3f3f46]"}`} style={{ borderColor: isExpanded ? agent.color + "60" : undefined }}>
+                    <button
+                      onClick={() => setExpandedAgent(isExpanded ? null : agent.id)}
+                      className="w-full text-left px-5 py-4 cursor-pointer"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-11 h-11 rounded-lg flex items-center justify-center text-sm font-bold shrink-0" style={{ backgroundColor: agent.color + "22", color: agent.color }}>{agent.avatar}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold">{agent.name}</h3>
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-[#27272a] text-[#52525b]">Phase {agent.pipelinePhase}</span>
+                            {isModified && <span className="text-xs px-1.5 py-0.5 rounded bg-[#f97316]/20 text-[#f97316]">Modified</span>}
+                          </div>
+                          <p className="text-sm text-[#71717a] mt-0.5">{agent.role}</p>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          {agent.tools.length > 0 && (
+                            <div className="hidden sm:flex gap-1">
+                              {agent.tools.map(t => <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-[#27272a] text-[#52525b] font-mono">{t}</span>)}
+                            </div>
+                          )}
+                          <span className="text-[#52525b] text-sm">{isExpanded ? "▲" : "▼"}</span>
+                        </div>
+                      </div>
+                    </button>
+                    {isExpanded && (
+                      <div className="px-5 pb-5 animate-fade-in">
+                        <div className="border-t border-[#27272a] pt-4 space-y-4">
+                          <div>
+                            <label className="text-xs font-medium text-[#a1a1aa] mb-2 block">System Prompt</label>
+                            <textarea
+                              value={agentPrompts[agent.id] || ""}
+                              onChange={(e) => setAgentPrompts((prev) => ({ ...prev, [agent.id]: e.target.value }))}
+                              rows={5}
+                              className="w-full px-4 py-3 bg-[#09090b] border border-[#27272a] rounded-lg text-sm text-white outline-none focus:border-[#8b5cf6] resize-y font-mono leading-relaxed"
+                            />
+                            <div className="flex items-center justify-between mt-2">
+                              <button onClick={() => { resetAgentConfig(agent.id); setAgentPrompts((prev) => ({ ...prev, [agent.id]: DEFAULT_AGENT_CONFIGS[agent.id].systemPrompt })); }} className="text-xs text-[#71717a] hover:text-white transition-colors cursor-pointer">Reset to default</button>
+                              <button onClick={() => saveAgentConfig(agent.id, { systemPrompt: agentPrompts[agent.id] })} className="px-3 py-1.5 bg-[#8b5cf6] hover:bg-[#7c3aed] text-white rounded-lg text-xs font-medium transition-colors cursor-pointer">Save</button>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium text-[#a1a1aa] mb-2 block">Constraints</label>
+                            <ul className="space-y-1">
+                              {agent.constraints.map((c, i) => (
+                                <li key={i} className="text-xs text-[#a1a1aa] flex items-start gap-2"><span className="text-[#52525b] mt-0.5 shrink-0">-</span>{c}</li>
+                              ))}
+                            </ul>
+                          </div>
+                          <div className="flex gap-6 flex-wrap text-xs text-[#71717a]">
+                            <div>Temperature: <span className="text-white">{agent.parameters.temperature}</span></div>
+                            <div>Max tokens: <span className="text-white">{agent.parameters.maxTokens.toLocaleString()}</span></div>
+                            <div>{agent.fewShotExamples.length} few-shot example{agent.fewShotExamples.length > 1 ? "s" : ""}</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })}
