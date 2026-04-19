@@ -4,7 +4,7 @@
 // ============================================================
 
 // --- Agent Types ---
-export type AgentRole = "pm" | "engineer" | "designer" | "system";
+export type AgentRole = "pm" | "engineer" | "designer" | "orchestrator" | "arbiter" | "system";
 
 export interface AgentInfo {
   role: AgentRole;
@@ -23,6 +23,14 @@ export const AGENTS: Record<AgentRole, AgentInfo> = {
     color: "#8b5cf6",
     bgColor: "rgba(139,92,246,0.12)",
     description: "System orchestrator",
+  },
+  orchestrator: {
+    role: "orchestrator",
+    name: "Orchestrator",
+    avatar: "OC",
+    color: "#f59e0b",
+    bgColor: "rgba(245,158,11,0.12)",
+    description: "Plans execution strategy and routes to agents",
   },
   pm: {
     role: "pm",
@@ -47,6 +55,14 @@ export const AGENTS: Record<AgentRole, AgentInfo> = {
     color: "#a855f7",
     bgColor: "rgba(168,85,247,0.12)",
     description: "Refines UI/UX and visual design",
+  },
+  arbiter: {
+    role: "arbiter",
+    name: "仲裁官",
+    avatar: "判",
+    color: "#ef4444",
+    bgColor: "rgba(239,68,68,0.12)",
+    description: "Evaluates if the product meets all requirements",
   },
 };
 
@@ -79,18 +95,49 @@ export interface Message {
   created_at: string;
 }
 
+// --- ReAct Step Types ---
+export type AgentStepType = "plan" | "execute" | "observe" | "reflect";
+
+export interface AgentStep {
+  agent: AgentRole;
+  stepType: AgentStepType;
+  content: string;
+  toolName?: string;
+  toolInput?: string;
+  toolOutput?: string;
+  planSteps?: string[];
+  currentStep?: number;
+  evaluation?: { passed: boolean; reason: string; deficiencies?: string[] };
+}
+
+// --- Pipeline Progress ---
+export type PipelineStatus = "pending" | "active" | "completed" | "skipped";
+
+export interface PipelineAgent {
+  agent: AgentRole;
+  status: PipelineStatus;
+  iteration?: number;
+}
+
 // --- SSE Event Protocol ---
 export interface SSEEvent {
   type:
     | "agent_start"
     | "agent_message"
     | "agent_complete"
+    | "agent_step"
     | "code_update"
+    | "pipeline_update"
+    | "iteration"
     | "error"
     | "done";
   agent?: AgentRole;
   content?: string;
   code?: string;
+  step?: AgentStep;
+  pipeline?: PipelineAgent[];
+  iteration?: number;
+  maxIterations?: number;
 }
 
 // --- Agent System Types ---

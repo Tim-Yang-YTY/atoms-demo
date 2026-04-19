@@ -7,7 +7,7 @@
 import { NextRequest } from "next/server";
 import { orchestrate } from "@/lib/agents/orchestrator";
 import { projectService } from "@/lib/services/project-service";
-import type { AgentContext, SSEEvent } from "@/lib/types";
+import type { AgentContext, AgentRole, SSEEvent } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
             await projectService.addMessages(
               agentMessages.map((m) => ({
                 project_id,
-                role: m.role as "pm" | "engineer" | "designer",
+                role: m.role as AgentRole,
                 content: m.content,
               }))
             );

@@ -4,7 +4,9 @@
 // Supports: Anthropic Claude, OpenAI, and mock mode
 // ============================================================
 
-export const AGENT_PROMPTS = {
+export const AGENT_PROMPTS: Record<string, string> = {
+  orchestrator: `You are the Orchestrator agent on the Atoms platform. Analyze the user's request, assess clarity, and create a numbered execution plan routing tasks to PM, Engineer, Designer, and Arbiter. Be concise.`,
+
   pm: `You are a senior Product Manager AI agent on the Atoms platform. Your job is to analyze user requirements and create a clear, structured product plan. Be concise and actionable. Format your output with clear sections using markdown. Focus on features, user flows, and data models. Keep responses under 300 words.`,
 
   engineer: `You are a senior Software Engineer AI agent on the Atoms platform. You generate complete, production-quality single-file HTML applications. Rules:
@@ -19,6 +21,8 @@ export const AGENT_PROMPTS = {
 - The app MUST be fully functional, not a placeholder`,
 
   designer: `You are a senior UI/UX Designer AI agent on the Atoms platform. Review generated applications and provide brief, actionable feedback on visual design, usability, and accessibility. Keep feedback concise and constructive. Mention specific improvements.`,
+
+  arbiter: `You are the 仲裁官 (Arbiter) agent on the Atoms platform. Rigorously evaluate whether the generated application meets ALL user requirements. Produce a requirements checklist, technical checks, and a final PASS or FAIL verdict. Be strict but fair.`,
 };
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -162,10 +166,14 @@ async function* mockStream(
   const userMsg = messages[messages.length - 1]?.content || "";
   let text: string;
 
-  if (systemPrompt.includes("Product Manager")) {
+  if (systemPrompt.includes("Orchestrator")) {
+    text = getMockOrchestratorResponse(userMsg);
+  } else if (systemPrompt.includes("Product Manager")) {
     text = getMockPMResponse(userMsg);
   } else if (systemPrompt.includes("Software Engineer")) {
     text = getMockEngineerResponse(userMsg);
+  } else if (systemPrompt.includes("仲裁官") || systemPrompt.includes("Arbiter")) {
+    text = getMockArbiterResponse(userMsg);
   } else {
     text = getMockDesignerResponse();
   }
@@ -183,6 +191,47 @@ async function* mockStream(
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+function getMockOrchestratorResponse(_userMsg: string): string {
+  return `## Execution Plan
+
+**Intent**: User wants a functional web application. Request clarity: High.
+
+### Pipeline Steps
+1. **PM** → Analyze requirements, extract features, define user flows and data model
+2. **Engineer** → Generate complete single-file HTML application with all features
+3. **Designer** → Review UI/UX, check accessibility, suggest improvements
+4. **Arbiter** → Evaluate app against all requirements, produce PASS/FAIL verdict
+
+### Context
+- Complexity: Medium
+- Estimated features: 5-7
+- Max iterations: 2
+- Focus: Full functionality with dark theme UI`;
+}
+
+function getMockArbiterResponse(_userMsg: string): string {
+  return `## Evaluation Report
+
+### Requirements Checklist
+1. **User Authentication** — ✅ PASS: Login/register with localStorage
+2. **CRUD Operations** — ✅ PASS: Add, edit, delete functionality present
+3. **Data Categorization** — ✅ PASS: Category system with filters
+4. **Summary Dashboard** — ✅ PASS: Stats cards with totals
+5. **Charts** — ✅ PASS: Category breakdown visualization
+6. **Data Persistence** — ✅ PASS: localStorage used throughout
+
+### Technical Checks
+- Valid HTML5 DOCTYPE ✅
+- Responsive viewport meta ✅
+- Dark theme tokens applied ✅
+- No external dependencies ✅
+- Event handlers present ✅
+- localStorage persistence ✅
+
+### Verdict: ✅ PASS
+All requirements verified. The application is fully functional with proper data persistence, responsive design, and a clean dark theme UI.`;
 }
 
 function getMockPMResponse(_userMsg: string): string {

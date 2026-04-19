@@ -68,7 +68,7 @@ export default function LandingPage() {
             <span className="bg-gradient-to-r from-[#8b5cf6] via-[#3b82f6] to-[#22c55e] bg-clip-text text-transparent animate-gradient">AI agents</span>
           </h1>
           <p className="text-xl text-[#a1a1aa] mb-10 max-w-2xl mx-auto leading-relaxed">
-            Describe your idea. Our AI team — Product Manager, Engineer, and Designer — will build it live in your browser.
+            Describe your idea. Our AI team — Orchestrator, PM, Engineer, Designer, and 仲裁官 — will plan, build, review, and evaluate it live.
           </p>
           <div className="flex items-center justify-center gap-4">
             <button onClick={() => router.push(userId ? "/dashboard" : "/register")} className="px-8 py-3 bg-[#8b5cf6] hover:bg-[#7c3aed] text-white rounded-xl text-base font-medium transition-all hover:scale-105 shadow-lg shadow-[#8b5cf6]/25">
@@ -81,13 +81,13 @@ export default function LandingPage() {
         </div>
 
         {/* Agent cards */}
-        <div className="max-w-3xl w-full mx-auto mb-20">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="max-w-5xl w-full mx-auto mb-20">
+          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {Object.values(DEFAULT_AGENT_CONFIGS).map((agent) => {
               const isExpanded = expandedAgent === agent.id;
               const isModified = agentPrompts[agent.id] !== DEFAULT_AGENT_CONFIGS[agent.id].systemPrompt;
               return (
-                <div key={agent.id} className={`rounded-xl border bg-[#18181b] transition-all ${isExpanded ? "border-[#3f3f46] col-span-1 sm:col-span-3" : "border-[#27272a] hover:border-[#3f3f46] cursor-pointer"}`}>
+                <div key={agent.id} className={`rounded-xl border bg-[#18181b] transition-all ${isExpanded ? "border-[#3f3f46] col-span-1 sm:col-span-3 lg:col-span-5" : "border-[#27272a] hover:border-[#3f3f46] cursor-pointer"}`}>
                   <button
                     onClick={() => setExpandedAgent(isExpanded ? null : agent.id)}
                     className="w-full text-left p-5 cursor-pointer"
