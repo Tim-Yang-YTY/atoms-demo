@@ -6,7 +6,7 @@ Operating rules and guardrails for AI agents. Obey hard rules unconditionally.
 
 ## System Overview
 
-**atoms-demo** is an AI-powered app builder platform. Users describe an app idea, and a multi-agent team (Product Manager, Engineer, Designer) generates it live with streaming preview.
+**atoms-demo** is an agentic app builder platform. Users describe an app idea, and an AI team (Orchestrator, PM, Engineer, Designer, Arbiter) generates it live with streaming preview.
 
 **Stack**: Next.js 14+ (App Router), TypeScript, Tailwind CSS v4, Supabase (optional), Anthropic/OpenAI APIs
 **Architecture**: Layered — API Routes → Services → Repositories → Storage (Supabase or in-memory)
@@ -46,7 +46,7 @@ src/
 ├── app/                    # API Layer (Next.js App Router)
 │   ├── api/                # REST endpoints
 │   │   ├── auth/           # Authentication
-│   │   ├── generate/       # SSE multi-agent generation (core)
+│   │   ├── generate/       # SSE agentic generation (core)
 │   │   └── projects/       # Project CRUD
 │   ├── dashboard/          # Project management UI
 │   ├── login/register/     # Auth pages
@@ -54,7 +54,7 @@ src/
 │
 ├── lib/                    # Business Logic Layer
 │   ├── agents/             # Agent System
-│   │   ├── orchestrator.ts # Multi-agent pipeline: PM → Engineer → Designer
+│   │   ├── orchestrator.ts # Agentic pipeline: Orch → PM → Eng → Des → Arb
 │   │   └── llm.ts          # LLM provider abstraction (Anthropic/OpenAI/mock)
 │   ├── services/           # Service Layer (business logic)
 │   ├── repositories/       # Data Access Layer (Supabase + memory fallback)

@@ -8,12 +8,12 @@ Last updated: 2026-04-18
 
 ## Active Work
 
-- **Initial release** (started 2026-04-18) — Core platform with multi-agent code generation, auth, project management, live preview. Mock mode fully functional. Supabase integration ready but optional.
+- **Initial release** (started 2026-04-18) — Core platform with agentic code generation, auth, project management, live preview. Mock mode fully functional. Supabase integration ready but optional.
 
 ## Recently Landed
 
 - 2026-04-18: Initial implementation complete
-  - Multi-agent orchestration (PM → Engineer → Designer)
+  - Agentic orchestration (Orch → PM → Eng → Des → Arb)
   - SSE streaming for real-time generation
   - Layered architecture (API → Services → Repositories)
   - In-memory storage fallback (works without Supabase)

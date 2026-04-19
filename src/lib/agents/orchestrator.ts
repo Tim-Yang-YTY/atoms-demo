@@ -1,5 +1,5 @@
 // ============================================================
-// Agent Orchestrator — ReAct-based multi-agent pipeline
+// Agent Orchestrator — ReAct-based agentic pipeline
 // Pipeline: Orchestrator → PM → Engineer → Designer → Arbiter
 // Each agent follows: Plan → Execute → Observe → Reflect
 //

@@ -4,6 +4,7 @@ import { useSyncExternalStore, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TEMPLATES } from "@/lib/types";
 import { DEFAULT_AGENT_CONFIGS, saveAgentConfig, resetAgentConfig } from "@/lib/agents/config";
+import { getSkillsForAgent } from "@/lib/skills/registry";
 
 function getSnapshot(): string | null {
   return localStorage.getItem("user_id");
@@ -22,19 +23,42 @@ export default function LandingPage() {
   const router = useRouter();
   const userId = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const [expandedAgent, setExpandedAgent] = useState<string | null>(null);
-  const [agentPrompts, setAgentPrompts] = useState<Record<string, string>>(() => {
-    const prompts: Record<string, string> = {};
+  const [agentOverrides, setAgentOverrides] = useState<Record<string, { prompt: string; temperature: number; maxTokens: number }>>(() => {
+    const overrides: Record<string, { prompt: string; temperature: number; maxTokens: number }> = {};
     for (const [id, config] of Object.entries(DEFAULT_AGENT_CONFIGS)) {
       if (typeof window !== "undefined") {
         try {
           const saved = localStorage.getItem(`agent_config_${id}`);
-          if (saved) { prompts[id] = JSON.parse(saved).systemPrompt || config.systemPrompt; }
-          else { prompts[id] = config.systemPrompt; }
-        } catch { prompts[id] = config.systemPrompt; }
-      } else { prompts[id] = config.systemPrompt; }
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            overrides[id] = {
+              prompt: parsed.systemPrompt || config.systemPrompt,
+              temperature: parsed.parameters?.temperature ?? config.parameters.temperature,
+              maxTokens: parsed.parameters?.maxTokens ?? config.parameters.maxTokens,
+            };
+          } else {
+            overrides[id] = { prompt: config.systemPrompt, temperature: config.parameters.temperature, maxTokens: config.parameters.maxTokens };
+          }
+        } catch {
+          overrides[id] = { prompt: config.systemPrompt, temperature: config.parameters.temperature, maxTokens: config.parameters.maxTokens };
+        }
+      } else {
+        overrides[id] = { prompt: config.systemPrompt, temperature: config.parameters.temperature, maxTokens: config.parameters.maxTokens };
+      }
     }
-    return prompts;
+    return overrides;
   });
+
+  const handleSaveAgent = (agentId: string) => {
+    const o = agentOverrides[agentId];
+    saveAgentConfig(agentId, { systemPrompt: o.prompt, parameters: { temperature: o.temperature, maxTokens: o.maxTokens } });
+  };
+
+  const handleResetAgent = (agentId: string) => {
+    resetAgentConfig(agentId);
+    const d = DEFAULT_AGENT_CONFIGS[agentId];
+    setAgentOverrides((prev) => ({ ...prev, [agentId]: { prompt: d.systemPrompt, temperature: d.parameters.temperature, maxTokens: d.parameters.maxTokens } }));
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -61,7 +85,7 @@ export default function LandingPage() {
         <div className="max-w-4xl mx-auto text-center mt-24 mb-16">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#3f3f46] text-xs text-[#a1a1aa] mb-6">
             <span className="w-2 h-2 rounded-full bg-[#22c55e] animate-pulse" />
-            Powered by Multi-Agent AI
+            Powered by Agentic AI
           </div>
           <h1 className="text-5xl sm:text-6xl font-bold mb-6 leading-tight">
             Build apps with{" "}
@@ -87,7 +111,13 @@ export default function LandingPage() {
           <div className="flex flex-col gap-3">
             {Object.values(DEFAULT_AGENT_CONFIGS).map((agent, index) => {
               const isExpanded = expandedAgent === agent.id;
-              const isModified = agentPrompts[agent.id] !== DEFAULT_AGENT_CONFIGS[agent.id].systemPrompt;
+              const override = agentOverrides[agent.id];
+              const isModified = override && (
+                override.prompt !== DEFAULT_AGENT_CONFIGS[agent.id].systemPrompt ||
+                override.temperature !== DEFAULT_AGENT_CONFIGS[agent.id].parameters.temperature ||
+                override.maxTokens !== DEFAULT_AGENT_CONFIGS[agent.id].parameters.maxTokens
+              );
+              const skills = getSkillsForAgent(agent.id);
               return (
                 <div key={agent.id}>
                   {/* Pipeline connector */}
@@ -121,34 +151,96 @@ export default function LandingPage() {
                         </div>
                       </div>
                     </button>
-                    {isExpanded && (
+                    {isExpanded && override && (
                       <div className="px-5 pb-5 animate-fade-in">
-                        <div className="border-t border-[#27272a] pt-4 space-y-4">
+                        <div className="border-t border-[#27272a] pt-4 space-y-5">
+                          {/* System Prompt */}
                           <div>
                             <label className="text-xs font-medium text-[#a1a1aa] mb-2 block">System Prompt</label>
                             <textarea
-                              value={agentPrompts[agent.id] || ""}
-                              onChange={(e) => setAgentPrompts((prev) => ({ ...prev, [agent.id]: e.target.value }))}
-                              rows={5}
+                              value={override.prompt}
+                              onChange={(e) => setAgentOverrides((prev) => ({ ...prev, [agent.id]: { ...prev[agent.id], prompt: e.target.value } }))}
+                              rows={6}
                               className="w-full px-4 py-3 bg-[#09090b] border border-[#27272a] rounded-lg text-sm text-white outline-none focus:border-[#8b5cf6] resize-y font-mono leading-relaxed"
                             />
-                            <div className="flex items-center justify-between mt-2">
-                              <button onClick={() => { resetAgentConfig(agent.id); setAgentPrompts((prev) => ({ ...prev, [agent.id]: DEFAULT_AGENT_CONFIGS[agent.id].systemPrompt })); }} className="text-xs text-[#71717a] hover:text-white transition-colors cursor-pointer">Reset to default</button>
-                              <button onClick={() => saveAgentConfig(agent.id, { systemPrompt: agentPrompts[agent.id] })} className="px-3 py-1.5 bg-[#8b5cf6] hover:bg-[#7c3aed] text-white rounded-lg text-xs font-medium transition-colors cursor-pointer">Save</button>
+                          </div>
+                          {/* Parameters */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <label className="text-xs font-medium text-[#a1a1aa] mb-2 block">Temperature: {override.temperature}</label>
+                              <input
+                                type="range"
+                                min="0"
+                                max="2"
+                                step="0.1"
+                                value={override.temperature}
+                                onChange={(e) => setAgentOverrides((prev) => ({ ...prev, [agent.id]: { ...prev[agent.id], temperature: parseFloat(e.target.value) } }))}
+                                className="w-full accent-[#8b5cf6]"
+                              />
+                              <div className="flex justify-between text-xs text-[#52525b] mt-1">
+                                <span>Precise (0)</span><span>Creative (2)</span>
+                              </div>
+                            </div>
+                            <div>
+                              <label className="text-xs font-medium text-[#a1a1aa] mb-2 block">Max Tokens</label>
+                              <input
+                                type="number"
+                                min="256"
+                                max="16384"
+                                step="256"
+                                value={override.maxTokens}
+                                onChange={(e) => setAgentOverrides((prev) => ({ ...prev, [agent.id]: { ...prev[agent.id], maxTokens: parseInt(e.target.value) || 2048 } }))}
+                                className="w-full px-3 py-2 bg-[#09090b] border border-[#27272a] rounded-lg text-sm text-white outline-none focus:border-[#8b5cf6]"
+                              />
                             </div>
                           </div>
+                          {/* Constraints */}
                           <div>
                             <label className="text-xs font-medium text-[#a1a1aa] mb-2 block">Constraints</label>
-                            <ul className="space-y-1">
+                            <ul className="space-y-1.5">
                               {agent.constraints.map((c, i) => (
-                                <li key={i} className="text-xs text-[#a1a1aa] flex items-start gap-2"><span className="text-[#52525b] mt-0.5 shrink-0">-</span>{c}</li>
+                                <li key={i} className="text-xs text-[#a1a1aa] flex items-start gap-2">
+                                  <span className="text-[#52525b] mt-0.5 shrink-0">-</span>{c}
+                                </li>
                               ))}
                             </ul>
                           </div>
-                          <div className="flex gap-6 flex-wrap text-xs text-[#71717a]">
-                            <div>Temperature: <span className="text-white">{agent.parameters.temperature}</span></div>
-                            <div>Max tokens: <span className="text-white">{agent.parameters.maxTokens.toLocaleString()}</span></div>
-                            <div>{agent.fewShotExamples.length} few-shot example{agent.fewShotExamples.length > 1 ? "s" : ""}</div>
+                          {/* Tools & Few-shots */}
+                          <div className="flex gap-6 flex-wrap">
+                            {agent.tools.length > 0 && (
+                              <div>
+                                <label className="text-xs font-medium text-[#a1a1aa] mb-1.5 block">Tools</label>
+                                <div className="flex gap-1.5 flex-wrap">
+                                  {agent.tools.map((t) => (
+                                    <span key={t} className="text-xs px-2 py-0.5 rounded bg-[#27272a] text-[#a1a1aa] font-mono">{t}</span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {agent.fewShotExamples.length > 0 && (
+                              <div>
+                                <label className="text-xs font-medium text-[#a1a1aa] mb-1.5 block">Few-shot Examples</label>
+                                <span className="text-xs text-[#71717a]">{agent.fewShotExamples.length} example{agent.fewShotExamples.length > 1 ? "s" : ""} configured</span>
+                              </div>
+                            )}
+                          </div>
+                          {/* Skills */}
+                          {skills.length > 0 && (
+                            <div>
+                              <label className="text-xs font-medium text-[#a1a1aa] mb-2 block">Skills</label>
+                              <div className="flex gap-2 flex-wrap">
+                                {skills.map((s) => (
+                                  <span key={s.id} className="text-xs px-2.5 py-1 rounded-md border border-[#27272a] text-[#a1a1aa] bg-[#09090b]" title={s.description}>
+                                    {s.name}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {/* Save / Reset */}
+                          <div className="flex items-center justify-between pt-2 border-t border-[#27272a]">
+                            <button onClick={() => handleResetAgent(agent.id)} className="text-xs text-[#71717a] hover:text-white transition-colors cursor-pointer">Reset to default</button>
+                            <button onClick={() => handleSaveAgent(agent.id)} className="px-4 py-1.5 bg-[#8b5cf6] hover:bg-[#7c3aed] text-white rounded-lg text-xs font-medium transition-colors cursor-pointer">Save Configuration</button>
                           </div>
                         </div>
                       </div>
@@ -177,7 +269,7 @@ export default function LandingPage() {
       </main>
 
       <footer className="border-t border-[#27272a] px-6 py-6 text-center text-sm text-[#52525b]">
-        Atoms Demo — AI-Powered App Builder | Multi-Agent Architecture
+        Atoms Demo — Agentic App Builder
       </footer>
     </div>
   );
