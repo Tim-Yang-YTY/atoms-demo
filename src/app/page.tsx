@@ -46,11 +46,11 @@ export default function LandingPage() {
         </div>
         <div className="flex items-center gap-3">
           {userId ? (
-            <button onClick={() => router.push("/dashboard")} className="px-4 py-2 bg-[#8b5cf6] hover:bg-[#7c3aed] text-white rounded-lg text-sm font-medium transition-colors">Dashboard</button>
+            <button onClick={() => router.push("/dashboard")} className="px-4 py-2 bg-[#8b5cf6] hover:bg-[#7c3aed] text-white rounded-lg text-sm font-medium transition-colors cursor-pointer hover:scale-105">Dashboard</button>
           ) : (
             <>
-              <button onClick={() => router.push("/login")} className="px-4 py-2 text-[#a1a1aa] hover:text-white text-sm font-medium transition-colors">Sign In</button>
-              <button onClick={() => router.push("/register")} className="px-4 py-2 bg-[#8b5cf6] hover:bg-[#7c3aed] text-white rounded-lg text-sm font-medium transition-colors">Get Started</button>
+              <button onClick={() => router.push("/login")} className="px-4 py-2 text-[#a1a1aa] hover:text-white text-sm font-medium transition-colors cursor-pointer">Sign In</button>
+              <button onClick={() => router.push("/register")} className="px-4 py-2 bg-[#8b5cf6] hover:bg-[#7c3aed] text-white rounded-lg text-sm font-medium transition-colors cursor-pointer hover:scale-105">Get Started</button>
             </>
           )}
         </div>
@@ -71,10 +71,10 @@ export default function LandingPage() {
             Describe your idea. Our AI team — Orchestrator, PM, Engineer, Designer, and 仲裁官 — will plan, build, review, and evaluate it live.
           </p>
           <div className="flex items-center justify-center gap-4">
-            <button onClick={() => router.push(userId ? "/dashboard" : "/register")} className="px-8 py-3 bg-[#8b5cf6] hover:bg-[#7c3aed] text-white rounded-xl text-base font-medium transition-all hover:scale-105 shadow-lg shadow-[#8b5cf6]/25">
+            <button onClick={() => router.push(userId ? "/dashboard" : "/register")} className="px-8 py-3 bg-[#8b5cf6] hover:bg-[#7c3aed] text-white rounded-xl text-base font-medium transition-all hover:scale-105 shadow-lg shadow-[#8b5cf6]/25 cursor-pointer">
               Start Building
             </button>
-            <button onClick={() => document.getElementById("templates")?.scrollIntoView({ behavior: "smooth" })} className="px-8 py-3 border border-[#3f3f46] hover:border-[#52525b] text-white rounded-xl text-base font-medium transition-colors">
+            <button onClick={() => document.getElementById("templates")?.scrollIntoView({ behavior: "smooth" })} className="px-8 py-3 border border-[#3f3f46] hover:border-[#52525b] text-white rounded-xl text-base font-medium transition-colors cursor-pointer hover:scale-105">
               View Templates
             </button>
           </div>
