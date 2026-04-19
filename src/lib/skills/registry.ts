@@ -128,6 +128,18 @@ export const BUILT_IN_SKILLS: Skill[] = [
     isBuiltIn: true,
   },
   {
+    id: "shared-coding-discipline",
+    name: "coding-discipline",
+    agent: "shared",
+    description: "Behavioral guidelines: think before coding, simplicity first, surgical changes, goal-driven execution",
+    version: "1.0.0",
+    category: "meta",
+    tags: ["discipline", "code-quality", "simplicity", "surgical-changes"],
+    content: `## When to Use\nWhen writing, reviewing, or refactoring any code.\n\n## Procedure\n1. Think Before Coding — state assumptions, surface tradeoffs, ask if unclear\n2. Simplicity First — minimum code, no speculative features, no unnecessary abstractions\n3. Surgical Changes — touch only what you must, match existing style, clean up only your own mess\n4. Goal-Driven Execution — define verifiable success criteria, loop until verified`,
+    createdAt: "2026-04-19T00:00:00Z",
+    isBuiltIn: true,
+  },
+  {
     id: "shared-self-improve",
     name: "self-improve",
     agent: "shared",
