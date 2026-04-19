@@ -20,7 +20,7 @@ import { toolRegistry } from "@/lib/tools/registry";
 
 // --- Safety constants ---
 const MAX_ITERATIONS = 3;
-const AGENT_TIMEOUT_MS = 60_000; // 60s per agent
+const AGENT_TIMEOUT_MS = 300_000; // 5 min per agent (mock mode streams slowly due to simulated typing delays)
 const MAX_STEPS_PER_AGENT = 6;   // max tool calls per agent per iteration
 
 // ============================================================
