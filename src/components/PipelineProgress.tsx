@@ -33,7 +33,10 @@ export default function PipelineProgress({ pipeline, iteration, maxIterations }:
                 style={{
                   backgroundColor: isActive ? agent.color + "22" : isCompleted ? agent.color + "15" : "#27272a",
                   color: isActive || isCompleted ? agent.color : "#52525b",
-                  ringColor: isActive ? agent.color : undefined,
+                  outlineColor: isActive ? agent.color : undefined,
+                  outlineWidth: isActive ? "1px" : undefined,
+                  outlineStyle: isActive ? "solid" : undefined,
+                  outlineOffset: "2px",
                 }}
               >
                 {isCompleted && <span className="text-[10px]">✓</span>}
