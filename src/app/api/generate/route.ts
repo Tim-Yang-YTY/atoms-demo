@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
             await projectService.addMessages(
               agentMessages.map((m) => ({
                 project_id,
-                role: m.role as "pm" | "engineer" | "designer",
+                role: m.role as "pm" | "engineer" | "designer" | "orchestrator" | "arbiter",
                 content: m.content,
               }))
             );
