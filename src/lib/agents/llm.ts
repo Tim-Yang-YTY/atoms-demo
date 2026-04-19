@@ -193,7 +193,27 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-function getMockOrchestratorResponse(_userMsg: string): string {
+function getMockOrchestratorResponse(userMsg: string): string {
+  const isModify = /modify|change|update|fix|improve|move|reorder|add .+ to|remove .+ from/i.test(userMsg);
+  if (isModify) {
+    return `## Modification Plan
+
+**Intent**: User wants to modify the existing application. Change request is clear.
+
+### Interpretation
+The user is requesting a specific change to the current app: "${userMsg}"
+
+### Assumptions
+- The existing app is functional and should be preserved
+- Only the requested change should be applied
+- All other features remain untouched
+
+### Pipeline Steps
+1. **PM** → Confirm the modification scope
+2. **Engineer** → Apply the change to existing code (surgical edit, not regeneration)
+3. **Designer** → Quick review of the modified area
+4. **Arbiter** → Verify the change was applied correctly`;
+  }
   return `## Execution Plan
 
 **Intent**: User wants a functional web application. Request clarity: High.
@@ -234,7 +254,22 @@ function getMockArbiterResponse(_userMsg: string): string {
 All requirements verified. The application is fully functional with proper data persistence, responsive design, and a clean dark theme UI.`;
 }
 
-function getMockPMResponse(_userMsg: string): string {
+function getMockPMResponse(userMsg: string): string {
+  const isModify = /modify|change|update|existing|Modification request/i.test(userMsg);
+  if (isModify) {
+    return `## Modification Scope
+
+### Requested Change
+The user wants to modify the existing application. This is a targeted edit, not a rebuild.
+
+### Impact Assessment
+- **Scope**: Small — single UI/UX change
+- **Risk**: Low — no structural changes needed
+- **Approach**: Surgical edit to the affected component only
+
+### Instructions for Engineer
+Apply the user's requested change to the existing code. Do not regenerate the entire application.`;
+  }
   return `## Product Analysis
 
 ### Key Features
@@ -257,7 +292,14 @@ function getMockPMResponse(_userMsg: string): string {
 Estimated components: Auth module, CRUD form, list view, chart, nav.`;
 }
 
-function getMockEngineerResponse(_userMsg: string): string {
+function getMockEngineerResponse(userMsg: string): string {
+  // If existing code is provided (modify intent), return it as-is in mock mode
+  // A real LLM would apply the requested changes; mock mode preserves the existing app
+  const existingCodeMatch = userMsg.match(/Existing code \(\d+ chars\):\n([\s\S]*?)\n\nThe user wants to MODIFY/);
+  if (existingCodeMatch && existingCodeMatch[1]) {
+    const existingCode = existingCodeMatch[1].trim();
+    return `Applying the requested modification to the existing app...\n\n\`\`\`html\n${existingCode}\n\`\`\`\n\nModification applied. Note: In mock mode, the actual code change requires a real LLM (set ANTHROPIC_API_KEY or OPENAI_API_KEY). The existing app is preserved.`;
+  }
   return "Building your application now...\n\n```html\n" + MOCK_APP_CODE + "\n```\n\nThe app is fully functional with localStorage persistence, responsive design, and all requested features.";
 }
 

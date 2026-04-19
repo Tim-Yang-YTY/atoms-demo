@@ -146,6 +146,7 @@ export async function* orchestrate(
     const confidence = (intentParsed.confidence as string) || "medium";
     const ambiguities = (intentParsed.ambiguities as string[]) || [];
     const complexity = (intentParsed.complexity as string) || "medium";
+    const isModify = intentType === "modify" && !!currentCode;
 
     // Build a requirements alignment summary the user/PM can reference
     const alignmentSummary = [
@@ -232,14 +233,33 @@ export async function* orchestrate(
     yield { type: "pipeline_update", pipeline: pipelineStatus(pipeline, "engineer", iteration) };
     yield { type: "agent_start", agent: "engineer" };
 
-    const engPlanSteps = ["Set up HTML structure", "Implement CSS with dark theme", "Build JavaScript logic", "Add localStorage persistence", "Wire up all features"];
-    yield stepEvent("engineer", "plan", "Planning code generation", { planSteps: engPlanSteps, currentStep: 0 });
+    const engPlanSteps = isModify
+      ? ["Load existing code", "Identify change target", "Apply modification", "Verify no regressions", "Output updated HTML"]
+      : ["Set up HTML structure", "Implement CSS with dark theme", "Build JavaScript logic", "Add localStorage persistence", "Wire up all features"];
+    yield stepEvent("engineer", "plan", isModify ? "Planning code modification" : "Planning code generation", { planSteps: engPlanSteps, currentStep: 0 });
 
     let engineerResponse = "";
     let codeBuffer = "";
 
+    // Build engineer prompt — include existing code if modifying or re-iterating
+    const includeExistingCode = currentCode && (isModify || iteration > 1);
+    const engineerPromptParts = [
+      `Product plan:\n${pmResponse}`,
+      `\nOriginal request: ${userPrompt}`,
+    ];
+    if (includeExistingCode) {
+      engineerPromptParts.push(`\n\nExisting code (${currentCode.length} chars):\n${currentCode}`);
+      if (isModify) {
+        engineerPromptParts.push(`\n\nThe user wants to MODIFY the existing app. Apply ONLY the requested changes. Do NOT regenerate from scratch. Preserve all existing functionality.`);
+        engineerPromptParts.push(`\nModification request: ${userPrompt}`);
+      } else if (arbiterFeedback) {
+        engineerPromptParts.push(`\n\nArbiter feedback:\n${arbiterFeedback}`);
+      }
+    }
+    engineerPromptParts.push(`\n\nGenerate a COMPLETE, self-contained single HTML file. Include ALL HTML, CSS, and JavaScript inline. The app must be fully functional. Use modern dark UI (bg #0f0f0f, text #e4e4e7). Use localStorage for persistence. Output ONLY the HTML code wrapped in \`\`\`html ... \`\`\` tags.`);
+
     const engineerMessages = [
-      { role: "user" as const, content: `Product plan:\n${pmResponse}\n\nOriginal request: ${userPrompt}\n\n${currentCode && iteration > 1 ? `Current code to improve (fix deficiencies):\n${currentCode}\n\nArbiter feedback:\n${arbiterFeedback}\n\n` : ""}Generate a COMPLETE, self-contained single HTML file. Include ALL HTML, CSS, and JavaScript inline. The app must be fully functional. Use modern dark UI (bg #0f0f0f, text #e4e4e7). Use localStorage for persistence. Output ONLY the HTML code wrapped in \`\`\`html ... \`\`\` tags.` },
+      { role: "user" as const, content: engineerPromptParts.join("") },
     ];
 
     yield stepEvent("engineer", "execute", "Generating application code");
