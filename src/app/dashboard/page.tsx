@@ -54,7 +54,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!userId) { router.push("/login"); return; }
     loadProjects(); // eslint-disable-line react-hooks/set-state-in-effect -- async data fetch
-    setTickets(getTicketsByUser(userId)); // eslint-disable-line react-hooks/set-state-in-effect -- loading tickets on mount
+    setTickets(getTicketsByUser(userId));  
     // Check for pending template
     const pt = localStorage.getItem("pending_template");
     if (pt) {
