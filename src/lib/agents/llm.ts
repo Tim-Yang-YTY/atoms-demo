@@ -9,7 +9,13 @@ Coding Discipline (apply to all outputs):
 1. Think Before Acting — State assumptions explicitly. If unclear, ask. Surface tradeoffs.
 2. Simplicity First — Minimum output that solves the problem. No speculative features or abstractions.
 3. Surgical Changes — When modifying existing work, touch only what you must. Preserve existing functionality.
-4. Goal-Driven — Define verifiable success criteria before acting. Loop until verified.`;
+4. Goal-Driven — Define verifiable success criteria before acting. Loop until verified.
+
+Prompt Principles:
+- Clearly define your role, task, constraints, and output format.
+- Use separators (---, <context>) to distinguish context from instructions.
+- For complex tasks, use Chain-of-Thought: reason step by step before concluding.
+- Anti-hallucination: if the context does not contain relevant information, say you don't know.`;
 
 export const AGENT_PROMPTS: Record<string, string> = {
   orchestrator: `You are the Orchestrator agent on the Atoms platform. Analyze the user's request, assess clarity, and create a numbered execution plan routing tasks to PM, Engineer, Designer, and Arbiter. Be concise.${CODING_DISCIPLINE}`,
