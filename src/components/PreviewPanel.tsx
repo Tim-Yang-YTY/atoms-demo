@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import FeedbackPanel from "./FeedbackPanel";
 
 interface Props {
   code: string | null;
   isGenerating: boolean;
+  projectId?: string;
 }
 
-export default function PreviewPanel({ code, isGenerating }: Props) {
+export default function PreviewPanel({ code, isGenerating, projectId }: Props) {
   const [tab, setTab] = useState<"preview" | "code">("preview");
   const [copied, setCopied] = useState(false);
 
@@ -114,6 +116,11 @@ export default function PreviewPanel({ code, isGenerating }: Props) {
           </div>
         )}
       </div>
+
+      {/* Feedback */}
+      {projectId && (
+        <FeedbackPanel projectId={projectId} enabled={!!code && !isGenerating} />
+      )}
     </div>
   );
 }
