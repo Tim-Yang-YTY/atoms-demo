@@ -2,10 +2,11 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import type { Project, Template } from "@/lib/types";
+import type { Project, Template, Ticket } from "@/lib/types";
 import { TEMPLATES } from "@/lib/types";
 import { DEFAULT_AGENT_CONFIGS, saveAgentConfig, resetAgentConfig } from "@/lib/agents/config";
 import { getSkillsForAgent } from "@/lib/skills/registry";
+import { getTicketsByUser, updateTicketStatus } from "@/lib/tickets/store";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -23,6 +24,7 @@ export default function DashboardPage() {
     }
     return overrides;
   });
+  const [tickets, setTickets] = useState<Ticket[]>([]);
   const userId = typeof window !== "undefined" ? localStorage.getItem("user_id") : null;
   const userName = typeof window !== "undefined" ? localStorage.getItem("user_name") : null;
 
@@ -52,6 +54,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!userId) { router.push("/login"); return; }
     loadProjects(); // eslint-disable-line react-hooks/set-state-in-effect -- async data fetch
+    setTickets(getTicketsByUser(userId));  
     // Check for pending template
     const pt = localStorage.getItem("pending_template");
     if (pt) {
@@ -328,6 +331,43 @@ export default function DashboardPage() {
             })}
           </div>
         </div>
+
+        {/* Tickets section */}
+        {tickets.length > 0 && (
+          <div className="mt-12 mb-8">
+            <h2 className="text-xl font-bold mb-1">Support Tickets</h2>
+            <p className="text-sm text-[#71717a] mb-6">{tickets.filter(t => t.status === "open").length} open ticket{tickets.filter(t => t.status === "open").length !== 1 ? "s" : ""}</p>
+            <div className="space-y-3">
+              {tickets.map((t) => {
+                const statusColors: Record<string, string> = { open: "#f97316", in_progress: "#3b82f6", resolved: "#22c55e" };
+                return (
+                  <div key={t.id} className="p-4 rounded-xl border border-[#27272a] bg-[#18181b]">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono text-[#a1a1aa] bg-[#27272a] px-2 py-0.5 rounded">{t.id}</span>
+                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: statusColors[t.status] || "#71717a" }} />
+                        <span className="text-xs text-[#71717a] capitalize">{t.status.replace("_", " ")}</span>
+                      </div>
+                      <span className="text-xs text-[#3f3f46]">{new Date(t.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <p className="text-sm text-[#a1a1aa] mb-1">{t.error.length > 80 ? t.error.slice(0, 80) + "..." : t.error}</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-[#52525b]">{t.userEmail}</span>
+                      {t.status === "open" && (
+                        <button
+                          onClick={() => { updateTicketStatus(t.id, "resolved"); setTickets(getTicketsByUser(userId!)); }}
+                          className="text-xs text-[#22c55e] hover:text-[#4ade80] transition-colors cursor-pointer"
+                        >
+                          Mark resolved
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Templates section */}
         <div className="mt-12 mb-8">

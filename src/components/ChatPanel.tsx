@@ -4,11 +4,12 @@ import { useState, useRef, useEffect } from "react";
 import AgentMessage from "./AgentMessage";
 import AgentStepMessage from "./AgentStepMessage";
 import PipelineProgress from "./PipelineProgress";
+import ErrorRecovery from "./ErrorRecovery";
 import type { AgentRole, AgentStep, PipelineAgent, SSEEvent, Message } from "@/lib/types";
 
 interface ChatMessage {
   id: string;
-  type: "message" | "step" | "pipeline";
+  type: "message" | "step" | "pipeline" | "error";
   role: "user" | AgentRole;
   content: string;
   isStreaming?: boolean;
@@ -16,6 +17,7 @@ interface ChatMessage {
   pipeline?: PipelineAgent[];
   iteration?: number;
   maxIterations?: number;
+  errorContext?: string; // what the user was doing when error occurred
 }
 
 interface Props {
@@ -188,7 +190,7 @@ export default function ChatPanel({
             if (event.type === "error") {
               setMessages((prev) => [
                 ...prev,
-                { id: crypto.randomUUID(), type: "message", role: "system", content: `Error: ${event.content}` },
+                { id: crypto.randomUUID(), type: "error", role: "system", content: event.content || "Unknown error", errorContext: prompt },
               ]);
             }
           } catch {
@@ -201,9 +203,10 @@ export default function ChatPanel({
         ...prev,
         {
           id: crypto.randomUUID(),
-          type: "message",
+          type: "error",
           role: "system",
-          content: `Error: ${err instanceof Error ? err.message : "Unknown error"}`,
+          content: err instanceof Error ? err.message : "Unknown error",
+          errorContext: prompt,
         },
       ]);
     } finally {
@@ -249,6 +252,17 @@ export default function ChatPanel({
           }
           if (msg.type === "step" && msg.step) {
             return <AgentStepMessage key={msg.id} step={msg.step} />;
+          }
+          if (msg.type === "error") {
+            return (
+              <ErrorRecovery
+                key={msg.id}
+                error={msg.content}
+                projectId={projectId}
+                userId={userId}
+                context={msg.errorContext || ""}
+              />
+            );
           }
           return (
             <AgentMessage
