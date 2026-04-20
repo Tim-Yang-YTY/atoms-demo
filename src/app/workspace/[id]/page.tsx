@@ -128,7 +128,7 @@ export default function WorkspacePage({ params }: { params: Promise<{ id: string
 
         {/* Preview Panel */}
         <div className="h-full overflow-hidden flex-1">
-          <PreviewPanel code={code} isGenerating={isGenerating} />
+          <PreviewPanel code={code} isGenerating={isGenerating} projectId={id} />
         </div>
       </div>
     </div>
