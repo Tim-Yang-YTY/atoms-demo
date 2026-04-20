@@ -154,6 +154,20 @@ export interface AgentResponse {
   code?: string;
 }
 
+// --- Support Ticket Types ---
+export type TicketStatus = "open" | "in_progress" | "resolved";
+
+export interface Ticket {
+  id: string;
+  projectId: string;
+  userId: string;
+  userEmail: string;
+  error: string;
+  context: string;       // what the user was trying to do
+  status: TicketStatus;
+  created_at: string;
+}
+
 // --- Tool System Types (registry pattern) ---
 export interface ToolDefinition {
   name: string;
