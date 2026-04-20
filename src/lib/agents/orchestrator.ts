@@ -160,6 +160,25 @@ export async function* orchestrate(
 
     yield stepEvent("orchestrator", "observe", `Requirements alignment:\n${alignmentSummary}`);
 
+    // --- Short-circuit: if request needs clarification, ask questions and stop ---
+    const needsClarification = (intentParsed.needsClarification as boolean) || false;
+    if (needsClarification && iteration === 1 && !isModify) {
+      const clarifyMsg = [
+        `Before I start building, I'd like to clarify a few things to make sure I get this right:\n`,
+        ...ambiguities.map((a, i) => `${i + 1}. ${a}`),
+        `\nCould you provide more details? For example:`,
+        domains.length === 0 ? `- What type of app do you want? (e.g., tracker, dashboard, editor, game)` : null,
+        features.length === 0 ? `- What key features should it have? (e.g., login, CRUD, charts, search)` : null,
+        `\nOr if you'd like me to proceed with my best interpretation, just say "go ahead".`,
+      ].filter(Boolean).join("\n");
+
+      yield { type: "agent_message", agent: "orchestrator", content: clarifyMsg };
+      yield stepEvent("orchestrator", "reflect", "Request is ambiguous. Asking for clarification before proceeding.");
+      yield { type: "agent_complete", agent: "orchestrator" };
+      yield { type: "done" };
+      return;
+    }
+
     // EXECUTE — create execution plan
     const planTool = toolRegistry.get("create_plan");
     let planResult = "";
@@ -406,6 +425,11 @@ export async function* orchestrate(
     arbiterFeedback = arbiterResponse;
     iteration++;
   }
+
+  // --- Proactive follow-up: ask if anything needs adjusting ---
+  yield { type: "agent_start", agent: "system" };
+  yield { type: "agent_message", agent: "system", content: "Your app is ready! Is there anything you'd like me to adjust? You can ask for specific changes like:\n- \"Move the category dropdown before the name field\"\n- \"Add a dark blue color scheme instead\"\n- \"Make the chart bigger\"\n\nOr give a thumbs up/down below the preview to record your feedback." };
+  yield { type: "agent_complete", agent: "system" };
 
   yield { type: "done" };
 }
